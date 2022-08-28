@@ -1,0 +1,15 @@
+<RCC>
+    <qresource prefix="/role">
+        <file>src/Boy.png</file>
+        <file>src/Girl.png</file>
+    </qresource>
+    <qresource prefix="/bed">
+        <file>src/bedEmpty.png</file>
+        <file>src/bedBoy.png</file>
+        <file>src/bedGirl.png</file>
+    </qresource>
+    <qresource prefix="/arrow">
+        <file>src/arrowLeft.png</file>
+        <file>src/arrowRight.png</file>
+    </qresource>
+</RCC>

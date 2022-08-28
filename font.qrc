@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/font">
+        <file>src/NotoSansSChineseMedium-7.ttf</file>
+    </qresource>
+</RCC>
