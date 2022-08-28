@@ -4,17 +4,23 @@
 #include <QWidget>
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions_1_1>
+#include <QOpenGLTexture>
 #include <QPainter>
 #include <QtMath>
 #include <QTimer>
+#include <QWheelEvent>
 
 class SleepRoom : public QOpenGLWidget, protected QOpenGLFunctions_1_1
 {
     Q_OBJECT
 public:
     explicit SleepRoom(QWidget *parent = nullptr);
+    ~SleepRoom() override;
 
     int floorMod(int val, int mod);
+
+protected:
+    void wheelEvent(QWheelEvent *ev) override;
 
 public slots:
     void onTimerTimeout();
@@ -39,20 +45,21 @@ public:
     double bedYToViewY(int bedy);
 
 protected:
+    void textureCoord(const QRectF &rect);
+
     void initializeGL() override;
     void paintGL() override;
     void resizeGL(int w, int h) override;
-//    void paintEvent(QPaintEvent *) override;
 
 private:
-    static constexpr int wSpc = 10;
-    static constexpr int hSpc = 10;
+    static constexpr int wSpc = 16;
+    static constexpr int hSpc = 16;
     static constexpr int wBed = 162;
     static constexpr int hBed = 260;
 
     struct {
         struct {
-            double scaleFactor = 1;
+            double scaleFactor = 0, adjustedScaleFactor = qPow(2, 0);
             double xOffset, yOffset;
         } view;
 
@@ -61,8 +68,9 @@ private:
         } player;
 
         struct {
-            QPixmap pixBedEmpty;
-            QPixmap pixBedBoy, pixBedGirl;
+            QImage pixBedEmpty, pixBedBoy, pixBedGirl;
+            QOpenGLTexture *textureBedEmpty;
+            QVector<QOpenGLTexture *> textureBeds;
         } asset;
 
         bool glState = false;
