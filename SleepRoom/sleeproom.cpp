@@ -58,12 +58,14 @@ QList<QPointF> SleepRoom::pathTo(const QPointF &start, QPointF end) {
     int startBX = viewXToBedX(start.x()), startBY = viewYToBedY(start.y());
     int endBX = viewXToBedX(end.x()), endBY = viewYToBedY(end.y());
 
-    bool insideBed = collisionBed(end.x(), end.y());
-    if(floorMod(endBX, 2) != floorMod(endBY, 2) && insideBed)
+    bool collisionEnd = collisionBed(end.x(), end.y());
+    if(floorMod(endBX, 2) != floorMod(endBY, 2) && collisionEnd)
         end = QPointF(bedXToViewX(endBX), bedYToViewY(endBY));
 
-    if((startBX == endBX && qAbs(startBY - endBY) <= 1) || (qAbs(startBX - endBX) <= 1 && startBY == endBY))
-//    if(startBX == endBX && startBY == endBY)
+    if(startBX == endBX && startBY == endBY)
+        return { end };
+    bool collisionStart = collisionBed(start.x(), start.y());
+    if(collisionStart != collisionEnd && ((startBX == endBX && qAbs(startBY - endBY) <= 1) || (qAbs(startBX - endBX) <= 1 && startBY == endBY)))
         return { end };
 
     QList<QPointF> path;
@@ -71,11 +73,13 @@ QList<QPointF> SleepRoom::pathTo(const QPointF &start, QPointF end) {
         if(endBY < startBY) {
             // 右上方
 
-            path << QPointF(bedXToViewX(startBX) + wBed / 2.0 + wSpc, bedYToViewY(startBY) - hBed / 2.0);
+            if(!collisionStart && floorMod(startBX, 2) != floorMod(startBY, 2) && start.x() < bedXToViewX(startBX) + wBed / 2.0)
+                path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
+            path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
             ++startBX;
             --startBY;
             if(startBX != endBX && startBY != endBY && floorMod(startBX, 2) != floorMod(startBY, 2)) {
-                path << QPointF(bedXToViewX(startBX) + wBed / 2.0 + wSpc, bedYToViewY(startBY) + hBed / 2.0);
+                path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
                 ++startBX;
             }
             if(startBX != endBX) {
@@ -85,16 +89,18 @@ QList<QPointF> SleepRoom::pathTo(const QPointF &start, QPointF end) {
                 path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
             }
             path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+            if(!collisionEnd && floorMod(endBX, 2) != floorMod(endBY, 2) && end.x() >= bedXToViewX(endBX) + wBed / 2.0)
+                path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
             path << end;
         }
         else if(endBY > startBY) {
             // 右下方
 
-            path << QPointF(bedXToViewX(startBX) + wBed / 2.0 + wSpc, bedYToViewY(startBY) + hBed / 2.0);
+            path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
             ++startBX;
             ++startBY;
             if(startBX != endBX && startBY != endBY && floorMod(startBX, 2) != floorMod(startBY, 2)) {
-                path << QPointF(bedXToViewX(startBX) + wBed / 2.0 + wSpc, bedYToViewY(startBY) - hBed / 2.0);
+                path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
                 ++startBX;
             }
             if(startBX != endBX) {
@@ -104,23 +110,41 @@ QList<QPointF> SleepRoom::pathTo(const QPointF &start, QPointF end) {
                 path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
             }
             path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0);
+            if(!collisionEnd && floorMod(endBX, 2) != floorMod(endBY, 2))
+                path << (end.x() < bedXToViewX(endBX) + wBed / 2.0
+                         ? QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0)
+                         : QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0));
             path << end;
         } else {
             // 右方
-            if(start.y() < bedYToViewY(startBY)) {
-                path << QPointF(bedXToViewX(startBX) + wBed / 2.0 + wSpc, bedYToViewY(startBY) - hBed / 2.0);
-                path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0);
+            if(startBX == endBX - 1 && !collisionStart && start.x() >= bedXToViewX(startBX) + wBed / 2.0) {
                 path << end;
             } else {
-                path << QPointF(bedXToViewX(startBX) + wBed / 2.0 + wSpc, bedYToViewY(startBY) + hBed / 2.0);
-                path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
-                path << end;
+                if(start.y() < bedYToViewY(startBY)) {
+                    path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
+                    path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0);
+                    if(!collisionEnd && floorMod(endBX, 2) != floorMod(endBY, 2))
+                        path << (end.x() < bedXToViewX(endBX) + wBed / 2.0
+                                 ? QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0)
+                                 : QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0));
+                    path << end;
+                } else {
+                    path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
+                    path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+                    if(!collisionEnd && floorMod(endBX, 2) != floorMod(endBY, 2) && end.x() >= bedXToViewX(endBX) + wBed / 2.0)
+                        path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+                    path << end;
+                }
             }
         }
     } else if(endBX < startBX) {
         if(endBY < startBY) {
             // 左上方
 
+            if(!collisionStart && floorMod(startBX, 2) != floorMod(startBY, 2))
+                path << (start.x() < bedXToViewX(startBX) + wBed / 2.0
+                         ? QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0)
+                         : QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0));
             path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
             --startBX;
             --startBY;
@@ -139,6 +163,8 @@ QList<QPointF> SleepRoom::pathTo(const QPointF &start, QPointF end) {
         } else if(endBY > startBY) {
             // 左下方
 
+            if(!collisionStart && floorMod(startBX, 2) != floorMod(startBY, 2) && start.x() >= bedXToViewX(startBX) + wBed / 2.0)
+                path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
             path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
             --startBX;
             ++startBY;
@@ -153,41 +179,73 @@ QList<QPointF> SleepRoom::pathTo(const QPointF &start, QPointF end) {
                 path << QPointF(bedXToViewX(startBX) + wBed / 2.0 + wSpc, bedYToViewY(startBY) - hBed / 2.0);
             }
             path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0);
+            if(!collisionEnd && floorMod(endBX, 2) != floorMod(endBY, 2) && end.x() < bedXToViewX(endBX) + wBed / 2.0)
+                path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
             path << end;
         } else {
             // 左方
-            if(start.y() < bedYToViewY(startBY)) {
-                path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
-                path << QPointF(bedXToViewX(endBX) + wBed / 2.0 + wSpc, bedYToViewY(endBY) - hBed / 2.0);
+            if(startBX == endBX + 1 && !collisionStart && end.x() >= bedXToViewX(endBX) + wBed / 2.0) {
                 path << end;
             } else {
-                path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
-                path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
-                path << end;
+                if(start.y() < bedYToViewY(startBY)) {
+                    if(!collisionStart && floorMod(startBX, 2) != floorMod(startBY, 2) && start.x() >= bedXToViewX(startBX) + wBed / 2.0)
+                        path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
+                    path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
+                    path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0);
+                    if(!collisionEnd && floorMod(endBX, 2) != floorMod(endBY, 2) && end.x() < bedXToViewX(endBX) + wBed / 2.0)
+                        path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+                    path << end;
+                } else {
+                    if(!collisionStart && floorMod(startBX, 2) != floorMod(startBY, 2) && start.x() >= bedXToViewX(startBX) + wBed / 2.0)
+                        path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
+                    path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
+                    path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+                    path << end;
+                }
             }
         }
     } else {
         if(endBY < startBY) {
             // 上方
-            if(start.x() < bedXToViewX(startBX)) {
-                path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
-                path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+            if(startBY == endBY + 1 && !collisionStart && end.y() >= bedYToViewY(endBY) + hBed / 2.0) {
                 path << end;
             } else {
-                path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
-                path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
-                path << end;
+                if(start.x() < bedXToViewX(startBX)) {
+                    if(!collisionStart && floorMod(startBX, 2) != floorMod(startBY, 2) && start.y() >= bedYToViewY(startBY) + hBed / 2.0)
+                        path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
+                    path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
+                    path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+                    if(!collisionEnd && floorMod(endBX, 2) != floorMod(endBY, 2) && end.y() < bedYToViewY(endBY) + hBed / 2.0)
+                        path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+                    path << end;
+                } else {
+                    if(!collisionStart && floorMod(startBX, 2) != floorMod(startBY, 2) && start.y() >= bedYToViewY(startBY) + hBed / 2.0)
+                        path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
+                    path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) - hBed / 2.0);
+                    path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+                    path << end;
+                }
             }
         } else {
             // 下方
-            if(start.x() < bedXToViewX(startBX)) {
-                path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
-                path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0);
+            if(startBY == endBY - 1 && !collisionStart && start.y() >= bedYToViewY(startBY) + hBed / 2.0) {
                 path << end;
             } else {
-                path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
-                path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0);
-                path << end;
+                if(start.x() < bedXToViewX(startBX)) {
+                    path << QPointF(bedXToViewX(startBX) - wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
+                    path << QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0);
+                    if(!collisionEnd && floorMod(endBX, 2) != floorMod(endBY, 2))
+                        path << (end.y() < bedYToViewY(endBY) + hBed / 2.0
+                                 ? QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0)
+                                 : QPointF(bedXToViewX(endBX) - wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0));
+                    path << end;
+                } else {
+                    path << QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0);
+                    path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) - hBed / 2.0);
+                    if(!collisionEnd && floorMod(endBX, 2) != floorMod(endBY, 2) && end.y() >= bedYToViewY(endBY) + hBed / 2.0)
+                        path << QPointF(bedXToViewX(endBX) + wBed / 2.0, bedYToViewY(endBY) + hBed / 2.0);
+                    path << end;
+                }
             }
         }
     }
@@ -491,13 +549,14 @@ void SleepRoom::paintGL() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     if(data.asset.textureBedEmpty) {
-        // 绘制床
         int bx1 = viewXToBedX(winXToViewX(0)), bx2 = viewXToBedX(winXToViewX(width()));
         int by1 = viewYToBedY(winYToViewY(0)), by2 = viewYToBedY(winYToViewY(height()));
         for(int i = bx1; i <= bx2; ++i) {
             for(int j = by1; j <= by2; ++j) {
                 if(floorMod(i, 2) == floorMod(j, 2))
                     continue;
+
+                // 绘制床
                 QOpenGLTexture *texture = data.asset.textureBedEmpty;
                 if(data.player.inBed && data.player.bedX == i && data.player.bedY == j) {
                     texture = data.asset.sleeperTextures[data.player.role].bed;
