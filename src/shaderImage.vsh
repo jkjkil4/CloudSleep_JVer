@@ -1,6 +1,5 @@
 
 attribute vec3 in_Position;
-attribute vec3 in_Color;
 attribute vec2 in_TexCoord;
 
 varying vec2 v_vTexCoord;

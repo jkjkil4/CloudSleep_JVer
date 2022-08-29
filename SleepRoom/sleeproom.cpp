@@ -382,13 +382,12 @@ void SleepRoom::paintTexture(QOpenGLTexture *texture, const QPointF &pos, const 
 void SleepRoom::initializeGL() {
     initializeOpenGLFunctions();
 
-    //定义数据-位置：颜色：纹理坐标
     GLfloat vert[] = {
-        //位置                   颜色                       纹理坐标
-        1.0f,  1.0f, 0.0f,      0.70f, 0.75f, 0.71f,       1.0f, 1.0f,
-        1.0f, -1.0f, 0.0f,      0.70f, 0.75f, 0.71f,       1.0f, 0.0f,
-       -1.0f, -1.0f, 0.0f,      0.70f, 0.75f, 0.71f,       0.0f, 0.0f,
-       -1.0f,  1.0f, 0.0f,      0.70f, 0.75f, 0.71f,       0.0f, 1.0f
+        //位置                   纹理坐标
+        1.0f,  1.0f, 0.0f,      1.0f, 1.0f,
+        1.0f, -1.0f, 0.0f,      1.0f, 0.0f,
+       -1.0f, -1.0f, 0.0f,      0.0f, 0.0f,
+       -1.0f,  1.0f, 0.0f,      0.0f, 1.0f
     };
 
     //定义索引数据
@@ -414,29 +413,11 @@ void SleepRoom::initializeGL() {
 
     // 定义Attrib
     location = (GLuint)glGetAttribLocation(shader.program.programId(), "in_Position");
-    glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), nullptr);
-    glEnableVertexAttribArray(location);
-    location = (GLuint)glGetAttribLocation(shader.program.programId(), "in_Color");
-    glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+    glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), nullptr);
     glEnableVertexAttribArray(location);
     location = (GLuint)glGetAttribLocation(shader.program.programId(), "in_TexCoord");
-    glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
+    glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
     glEnableVertexAttribArray(location);
-
-//    //定义数据属性 - 位置属性（最大取9个浮点数（第5个参数），从0位置开始（第6个参数），取3个浮点数数据（第2个参数））
-//    location = (GLuint)glGetAttribLocation(_shaderProgram.programId(), "in_Position");
-//    glEnableVertexAttribArray(location);
-//    glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), nullptr);
-
-//    //定义数据属性 - 颜色属性（最大取9个浮点数（第5个参数），从3位置开始（第6个参数），取4个浮点数数据（第2个参数））
-//    location = (GLuint)glGetAttribLocation(_shaderProgram.programId(), "in_Color");
-//    glEnableVertexAttribArray(location);
-//    glVertexAttribPointer(location, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
-
-//    //定义数据属性 - 纹理坐标属性（最大取9个浮点数（第5个参数），从7位置开始（第6个参数），取2个浮点数数据（第2个参数））
-//    location = (GLuint)glGetAttribLocation(_shaderProgram.programId(), "in_TexCoord");
-//    glEnableVertexAttribArray(location);
-//    glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (void*)(7 * sizeof(GLfloat)));
 
     //解除绑定缓存区
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -503,9 +484,8 @@ void SleepRoom::paintGL() {
         );
     }
 
-//    p.endNativePainting();
-////    QPainter p(this);
-////    p.setRenderHint(QPainter::Antialiasing);
+//    QPainter p(this);
+//    p.setRenderHint(QPainter::Antialiasing);
 
 //    QFont font;
 //    font.setPointSize(12);
