@@ -6,6 +6,7 @@
 #include <QTcpSocket>
 #include <QMessageBox>
 #include <QMetaEnum>
+#include <QJsonArray>
 
 class Mainpage;
 class SleepRoom;

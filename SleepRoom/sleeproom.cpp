@@ -1,15 +1,28 @@
 #include "sleeproom.h"
 
+#include "overlay.h"
+
 SleepRoom::SleepRoom(QWidget *parent)
-    : QOpenGLWidget(parent), mTimer(new QTimer(this))
+    : QOpenGLWidget(parent),
+      mOverlay(new Overlay(this)),
+      mTimer(new QTimer(this))
 {
     mTimer->setTimerType(Qt::TimerType::PreciseTimer);
     mTimer->start(17);
     connect(mTimer, &QTimer::timeout, this, &SleepRoom::onTimerTimeout);
+
+    mElapsedTimer.start();
+
+    connect(mOverlay, &Overlay::paint, this, &SleepRoom::onPaint);
 }
 
 SleepRoom::~SleepRoom() {
 
+}
+
+void SleepRoom::resizeEvent(QResizeEvent *ev) {
+    QOpenGLWidget::resizeEvent(ev);
+    mOverlay->setGeometry(rect());
 }
 
 int SleepRoom::floorMod(int val, int mod) {
@@ -17,14 +30,14 @@ int SleepRoom::floorMod(int val, int mod) {
 }
 double SleepRoom::sqr(double v) { return v * v; }
 
-void SleepRoom::setName(const QString &name) { mName = name; }
-void SleepRoom::setRole(int role) { mRole = role; }
-void SleepRoom::setId(qulonglong id) { mId = id; }
+void SleepRoom::setName(const QString &name) { data.player.name = name; }
+void SleepRoom::setRole(int role) { data.player.role = role; }
+void SleepRoom::setId(qulonglong id) { data.player.id = id; }
 
 void SleepRoom::clear() {
-    mName = "";
-    mRole = 0;
-    mId = 0;
+    data.player.name = "";
+    data.player.role = 0;
+    data.player.id = 0;
 
     data.view.scaleFactor = 0;
     data.view.adjustedScaleFactor = qPow(2, 0);
@@ -180,10 +193,10 @@ QList<QPointF> SleepRoom::pathTo(const QPointF &start, QPointF end) {
     }
     return path;
 }
-bool SleepRoom::doPath(QList<QPointF> &path, double &a, double &b) {
+bool SleepRoom::doPath(QList<QPointF> &path, double &a, double &b, double step) {
     if(path.isEmpty())
         return false;
-    double step = 4;
+
     double len = qSqrt(sqr(a - path[0].x()) + sqr(b - path[0].y()));
     while(step > len) {
         step -= len;
@@ -254,20 +267,31 @@ void SleepRoom::mouseReleaseEvent(QMouseEvent *ev) {
 
 
 void SleepRoom::wheelEvent(QWheelEvent *ev) {
-#ifndef Q_OS_ANDROID
+#ifdef Q_OS_ANDROID
+    Q_UNUSED(ev)
+#else
     data.view.scaleFactor = qBound<double>(-2.1, data.view.scaleFactor + (ev->delta() > 0 ? 0.15 : -0.15), 1.8);
     data.view.adjustedScaleFactor = qPow(2, data.view.scaleFactor);
 #endif
 }
 
 void SleepRoom::onPos(qulonglong id, double x, double y) {
-
+    auto iter = data.otherSleeper.find(id);
+    if(iter == data.otherSleeper.end())
+        return;
+    iter->path.clear();
+    iter->x = x;
+    iter->y = y;
+    iter->inBed = false;
 }
 void SleepRoom::onMove(qulonglong id, double x, double y) {
-
+    auto iter = data.otherSleeper.find(id);
+    if(iter == data.otherSleeper.end())
+        return;
+    iter->path = pathTo(QPointF(iter->x, iter->y), QPointF(x, y));
 }
 void SleepRoom::onSleep(qulonglong id, int x, int y) {
-    if(id == mId) {
+    if(id == data.player.id) {
         data.player.bedX = x;
         data.player.bedY = y;
         data.player.inBed = true;
@@ -280,29 +304,55 @@ void SleepRoom::onSleep(qulonglong id, int x, int y) {
         data.player.x = bedCenterX;
         data.player.y = bedCenterY;
     } else {
-        // TODO
+        auto iter = data.otherSleeper.find(id);
+        if(iter != data.otherSleeper.end()) {
+            iter->bedX = x;
+            iter->bedY = y;
+            iter->inBed = true;
+        }
     }
+}
+void SleepRoom::onSleeper(const QString &name, int role, qulonglong id, double x, double y, int bx, int by, bool inBed) {
+    auto iter = data.otherSleeper.constFind(id);
+    if(iter != data.otherSleeper.cend())
+        return;
+    data.otherSleeper[id] = Sleeper{ name, qBound(0, role, (int)data.asset.sleeperTextures.length()), id, x, y, bx, by, inBed, {} };
+}
+void SleepRoom::onLeave(qulonglong id) {
+    auto iter = data.otherSleeper.find(id);
+    if(iter == data.otherSleeper.end())
+        return;
+    data.otherSleeper.erase(iter);
 }
 
 void SleepRoom::onTimerTimeout() {
     data.counter++;
 
+    int elapsed = qMax(0, (int)mElapsedTimer.elapsed());
+    mElapsedTimer.start();
+    double step = (double)elapsed / 4.5;
+
     if(!data.player.path.isEmpty()) {
-        if(doPath(data.player.path, data.player.x, data.player.y)) {
-            int bx = viewXToBedX(data.player.x);
-            int by = viewYToBedY(data.player.y);
-            if(floorMod(bx, 2) != floorMod(by, 2)) {
-//                data.player.bedX = bx;
-//                data.player.bedY = by;
-//                data.player.inBed = true;
-                emit sSleep(bx, by);
-            }
+        bool sendSleep = false;
+        int bx = viewXToBedX(data.player.x);
+        int by = viewYToBedY(data.player.y);
+        if(doPath(data.player.path, data.player.x, data.player.y, step) && floorMod(bx, 2) != floorMod(by, 2)) {
+//            data.player.bedX = bx;
+//            data.player.bedY = by;
+//            data.player.inBed = true;
+            sendSleep = true;
         }
-        if(data.player.path.isEmpty()) {
+        if(data.player.path.isEmpty())
             emit sPos(data.player.x, data.player.y);
-        }
+        if(sendSleep)
+            emit sSleep(bx, by);
+    }
+    for(Sleeper &sleeper : data.otherSleeper) {
+        if(!sleeper.path.isEmpty())
+            doPath(sleeper.path, sleeper.x, sleeper.y, step);
     }
     update();
+    mOverlay->update();
 }
 
 double SleepRoom::GLXToWinX(double glx) {
@@ -353,23 +403,6 @@ bool SleepRoom::collisionBed(double viewx, double viewy) {
     return dx < wBed && dy < hBed;
 }
 
-//void SleepRoom::textureCoord(const QRectF &rect) {
-//    glTexCoord2d(1.0, 1.0);
-//    glVertex3f((float)winXToGLX(rect.x() + rect.width()), (float)winYToGLY(rect.y() + rect.height()), 0.0f);
-
-//    glTexCoord2d(0.0, 1.0);
-//    glVertex3f((float)winXToGLX(rect.x()), (float)winYToGLY(rect.y() + rect.height()), 0.0f);
-
-//    glTexCoord2d(0.0, 0.0);
-//    glVertex3f((float)winXToGLX(rect.x()), (float)winYToGLY(rect.y()), 0.0f);
-
-//    glTexCoord2d(1.0, 0.0);
-//    glVertex3f((float)winXToGLX(rect.x() + rect.width()), (float)winYToGLY(rect.y()), 0.0f);
-//}
-
-//static const char * vertexShaderSource = "#version 330 core\n""layout (location = 0) in vec3 aPos;\n""void main()\n""{\n"" gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n""}\0";
-
-//static const char * fragmentShaderSource = "#version 330 core\n""out vec4 FragColor;\n""void main()\n""{\n"" FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n""}\n\0";
 
 void SleepRoom::paintTexture(QOpenGLTexture *texture, const QPointF &pos, const QSizeF &scale, double rotation) {
     texture->bind(0);
@@ -467,7 +500,14 @@ void SleepRoom::paintGL() {
                     continue;
                 QOpenGLTexture *texture = data.asset.textureBedEmpty;
                 if(data.player.inBed && data.player.bedX == i && data.player.bedY == j) {
-                    texture = data.asset.sleeperTextures[mRole].bed;
+                    texture = data.asset.sleeperTextures[data.player.role].bed;
+                } else {
+                    for(const Sleeper &sleeper : qAsConst(data.otherSleeper)) {
+                        if(sleeper.inBed && sleeper.bedX == i && sleeper.bedY == j) {
+                            texture = data.asset.sleeperTextures[sleeper.role].bed;
+                            break;
+                        }
+                    }
                 }
                 double x = viewXToWinX(bedXToViewX(i)), y = viewYToWinY(bedYToViewY(j));
                 paintTexture(texture, QPointF(x, y), QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0);
@@ -475,55 +515,63 @@ void SleepRoom::paintGL() {
         }
     }
 
-    QOpenGLTexture *roleTexture = data.asset.sleeperTextures[mRole].walk;
-    if(!data.player.inBed && roleTexture) {
+    if(!data.player.inBed) {
         // 绘制玩家
         paintTexture(
-            roleTexture, QPointF(viewXToWinX(data.player.x), viewYToWinY(data.player.y)),
+            data.asset.sleeperTextures[data.player.role].walk, QPointF(viewXToWinX(data.player.x), viewYToWinY(data.player.y - 50)),
             QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0
         );
     }
-
-//    QPainter p(this);
-//    p.setRenderHint(QPainter::Antialiasing);
-
-//    QFont font;
-//    font.setPointSize(12);
-//    p.setFont(font);
-
-//    QFontMetrics fm(font);
-
-//    // 绘制玩家名称
-//    QSizeF size = fm.boundingRect(mName).size() + QSizeF(10, 10);
-//    QPointF pos;
-//    if(data.player.inBed) {
-//        pos = QPointF(
-//                    viewXToWinX(bedXToViewX(data.player.bedX)) - size.width() / 2.0,
-//                    viewYToWinY(bedYToViewY(data.player.bedY) - hBed * 0.4) - size.height()
-//                    );
-//    } else {
-//        pos = QPointF(viewXToWinX(data.player.x) - size.width() / 2.0, viewYToWinY(data.player.y - 115) - size.height());
-//    }
-//    QRectF rect(pos, size);
-//    p.setPen(Qt::NoPen);
-//    p.setBrush(QColor(0, 0, 0, 128));
-//    p.drawRect(rect);
-//    p.setPen(Qt::white);
-//    p.drawText(rect, Qt::AlignCenter, mName);
-
-//    // 绘制路线
-//    if(!data.player.path.isEmpty()) {
-//        p.setPen(QPen(QColor(255, 255, 255, 100), 2));
-//        QPointF prev(viewXToWinX(data.player.x), viewYToWinY(data.player.y));
-//        for(const QPointF &pos : qAsConst(data.player.path)) {
-//            QPointF cur(viewXToWinX(pos.x()), viewYToWinY(pos.y()));
-//            p.drawLine(prev, cur);
-//            prev = cur;
-//        }
-//    }
-
+    // 绘制其他玩家
+    for(const Sleeper &sleeper : qAsConst(data.otherSleeper)) {
+        if(sleeper.inBed)
+            continue;
+        paintTexture(
+            data.asset.sleeperTextures[sleeper.role].walk, QPointF(viewXToWinX(sleeper.x), viewYToWinY(sleeper.y - 50)),
+            QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0
+        );
+    }
 }
 
 void SleepRoom::resizeGL(int w, int h) {
     shader.program.setUniformValue(shader.locationWindowSize, (float)w, (float)h);
+}
+
+void SleepRoom::onPaint(QPainter *p) {
+    p->setRenderHint(QPainter::Antialiasing);
+
+    QFont font;
+    font.setPointSize(12);
+    p->setFont(font);
+
+    QFontMetrics fm(font);
+
+    // 绘制玩家名称
+    QSizeF size = fm.boundingRect(data.player.name).size() + QSizeF(10, 10);
+    QPointF pos;
+    if(data.player.inBed) {
+        pos = QPointF(
+                    viewXToWinX(bedXToViewX(data.player.bedX)) - size.width() / 2.0,
+                    viewYToWinY(bedYToViewY(data.player.bedY) - hBed * 0.4) - size.height()
+                    );
+    } else {
+        pos = QPointF(viewXToWinX(data.player.x) - size.width() / 2.0, viewYToWinY(data.player.y - 115) - size.height());
+    }
+    QRectF rect(pos, size);
+    p->setPen(Qt::NoPen);
+    p->setBrush(QColor(0, 0, 0, 128));
+    p->drawRect(rect);
+    p->setPen(Qt::white);
+    p->drawText(rect, Qt::AlignCenter, data.player.name);
+
+    // 绘制路线
+    if(!data.player.path.isEmpty()) {
+        p->setPen(QPen(QColor(255, 255, 255, 100), 2));
+        QPointF prev(viewXToWinX(data.player.x), viewYToWinY(data.player.y));
+        for(const QPointF &pos : qAsConst(data.player.path)) {
+            QPointF cur(viewXToWinX(pos.x()), viewYToWinY(pos.y()));
+            p->drawLine(prev, cur);
+            prev = cur;
+        }
+    }
 }

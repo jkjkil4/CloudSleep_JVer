@@ -11,6 +11,10 @@
 #include <QTimer>
 #include <QWheelEvent>
 
+#include <QElapsedTimer>
+
+class Overlay;
+
 class SleepRoom : public QOpenGLWidget, protected QOpenGLExtraFunctions
 {
     Q_OBJECT
@@ -18,6 +22,13 @@ public:
     explicit SleepRoom(QWidget *parent = nullptr);
     ~SleepRoom() override;
 
+protected:
+    void resizeEvent(QResizeEvent *ev) override;
+
+private:
+    Overlay *mOverlay;
+
+public:
     int floorMod(int val, int mod);
     double sqr(double v);
 
@@ -28,20 +39,19 @@ public:
     void clear();
 
 private:
-    QString mName;
-    int mRole;
-    qulonglong mId;
-
     struct Sleeper {
+        QString name;
+        int role;
+        qulonglong id = 0;
         double x, y;
-        QList<QPointF> path;
         int bedX, bedY;
         bool inBed = false;
+        QList<QPointF> path;
     };
 
 public:
     QList<QPointF> pathTo(const QPointF &start, QPointF end);
-    bool doPath(QList<QPointF> &path, double &x, double &y);
+    bool doPath(QList<QPointF> &path, double &x, double &y, double step);
 
 protected:
     void mousePressEvent(QMouseEvent *ev) override;
@@ -53,6 +63,8 @@ public:
     void onPos(qulonglong id, double x, double y);
     void onMove(qulonglong id, double x, double y);
     void onSleep(qulonglong id, int x, int y);
+    void onSleeper(const QString &name, int role, qulonglong id, double x, double y, int bx, int by, bool inBed);
+    void onLeave(qulonglong id);
 
 signals:
     void sPos(double x, double y);
@@ -68,6 +80,7 @@ public slots:
 
 private:
     QTimer *mTimer;
+    QElapsedTimer mElapsedTimer;
 
 public:
     double GLXToWinX(double glx);
@@ -95,6 +108,9 @@ protected:
     void paintGL() override;
     void resizeGL(int w, int h) override;
 
+public slots:
+    void onPaint(QPainter *p);
+
 private:
     static constexpr int wSpc = 40;
     static constexpr int hSpc = 40;
@@ -108,7 +124,7 @@ private:
         } view;
 
         Sleeper player;
-        QList<Sleeper> otherSleeper;
+        QMap<qulonglong, Sleeper> otherSleeper;
         qulonglong counter;
 
         struct {

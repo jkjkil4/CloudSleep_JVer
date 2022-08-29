@@ -14,6 +14,7 @@ CONFIG += c++17
 SOURCES += \
     Mainpage/mainpage.cpp \
     Mainpage/roledisplay.cpp \
+    SleepRoom/overlay.cpp \
     SleepRoom/sleeproom.cpp \
     main.cpp \
     widget.cpp
@@ -21,6 +22,7 @@ SOURCES += \
 HEADERS += \
     Mainpage/mainpage.h \
     Mainpage/roledisplay.h \
+    SleepRoom/overlay.h \
     SleepRoom/sleeproom.h \
     widget.h
 
@@ -34,7 +36,8 @@ RESOURCES += \
     src.qrc
 
 FORMS += \
-    Mainpage/mainpage.ui
+    Mainpage/mainpage.ui \
+    SleepRoom/overlay.ui
 
 DISTFILES += \
     android_sources/AndroidManifest.xml

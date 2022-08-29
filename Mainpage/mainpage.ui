@@ -77,6 +77,9 @@
          <height>282</height>
         </size>
        </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
 	border: none;
@@ -132,6 +135,9 @@
          <width>71</width>
          <height>282</height>
         </size>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
