@@ -12,4 +12,8 @@
         <file>src/arrowLeft.png</file>
         <file>src/arrowRight.png</file>
     </qresource>
+    <qresource prefix="/shader">
+        <file>src/shaderImage.fsh</file>
+        <file>src/shaderImage.vsh</file>
+    </qresource>
 </RCC>

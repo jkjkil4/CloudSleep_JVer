@@ -1,6 +1,9 @@
 QT       += core gui network
 
+win32: CONFIG(release, debug|release): QMAKE_LFLAGS += -static -static-libgcc -static-libstdc++
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+greaterThan(QT_MAJOR_VERSION, 5): QT += openglwidgets
 
 CONFIG += c++17
 
@@ -32,3 +35,8 @@ RESOURCES += \
 
 FORMS += \
     Mainpage/mainpage.ui
+
+DISTFILES += \
+    android_sources/AndroidManifest.xml
+
+ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android_sources

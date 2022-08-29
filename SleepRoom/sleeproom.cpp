@@ -254,8 +254,10 @@ void SleepRoom::mouseReleaseEvent(QMouseEvent *ev) {
 
 
 void SleepRoom::wheelEvent(QWheelEvent *ev) {
+#ifndef Q_OS_ANDROID
     data.view.scaleFactor = qBound<double>(-2.1, data.view.scaleFactor + (ev->delta() > 0 ? 0.15 : -0.15), 1.8);
     data.view.adjustedScaleFactor = qPow(2, data.view.scaleFactor);
+#endif
 }
 
 void SleepRoom::onPos(qulonglong id, double x, double y) {
@@ -351,22 +353,109 @@ bool SleepRoom::collisionBed(double viewx, double viewy) {
     return dx < wBed && dy < hBed;
 }
 
-void SleepRoom::textureCoord(const QRectF &rect) {
-    glTexCoord2d(1.0, 1.0);
-    glVertex3f((float)winXToGLX(rect.x() + rect.width()), (float)winYToGLY(rect.y() + rect.height()), 0.0f);
+//void SleepRoom::textureCoord(const QRectF &rect) {
+//    glTexCoord2d(1.0, 1.0);
+//    glVertex3f((float)winXToGLX(rect.x() + rect.width()), (float)winYToGLY(rect.y() + rect.height()), 0.0f);
 
-    glTexCoord2d(0.0, 1.0);
-    glVertex3f((float)winXToGLX(rect.x()), (float)winYToGLY(rect.y() + rect.height()), 0.0f);
+//    glTexCoord2d(0.0, 1.0);
+//    glVertex3f((float)winXToGLX(rect.x()), (float)winYToGLY(rect.y() + rect.height()), 0.0f);
 
-    glTexCoord2d(0.0, 0.0);
-    glVertex3f((float)winXToGLX(rect.x()), (float)winYToGLY(rect.y()), 0.0f);
+//    glTexCoord2d(0.0, 0.0);
+//    glVertex3f((float)winXToGLX(rect.x()), (float)winYToGLY(rect.y()), 0.0f);
 
-    glTexCoord2d(1.0, 0.0);
-    glVertex3f((float)winXToGLX(rect.x() + rect.width()), (float)winYToGLY(rect.y()), 0.0f);
+//    glTexCoord2d(1.0, 0.0);
+//    glVertex3f((float)winXToGLX(rect.x() + rect.width()), (float)winYToGLY(rect.y()), 0.0f);
+//}
+
+//static const char * vertexShaderSource = "#version 330 core\n""layout (location = 0) in vec3 aPos;\n""void main()\n""{\n"" gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n""}\0";
+
+//static const char * fragmentShaderSource = "#version 330 core\n""out vec4 FragColor;\n""void main()\n""{\n"" FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n""}\n\0";
+
+void SleepRoom::paintTexture(QOpenGLTexture *texture, const QPointF &pos, const QSizeF &scale, double rotation) {
+    texture->bind(0);
+    glUniform2f(shader.locationTexPos, (float)winXToGLX(pos.x()), (float)winYToGLY(pos.y()));
+    glUniform2f(shader.locationTexSize, (float)(scale.width() * texture->width() / width()), -(float)(scale.height() * texture->height() / height()));
+    glUniform1f(shader.locationRotation, (float)rotation);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 }
 
 void SleepRoom::initializeGL() {
     initializeOpenGLFunctions();
+
+    //定义数据-位置：颜色：纹理坐标
+    GLfloat vert[] = {
+        //位置                   颜色                       纹理坐标
+        1.0f,  1.0f, 0.0f,      0.70f, 0.75f, 0.71f,       1.0f, 1.0f,
+        1.0f, -1.0f, 0.0f,      0.70f, 0.75f, 0.71f,       1.0f, 0.0f,
+       -1.0f, -1.0f, 0.0f,      0.70f, 0.75f, 0.71f,       0.0f, 0.0f,
+       -1.0f,  1.0f, 0.0f,      0.70f, 0.75f, 0.71f,       0.0f, 1.0f
+    };
+
+    //定义索引数据
+    unsigned int indices[] = {
+        0, 1, 3,
+        1, 2, 3
+    };
+
+    shader.program.addShaderFromSourceFile(QOpenGLShader::Vertex, ":/shader/src/shaderImage.vsh");
+    shader.program.addShaderFromSourceFile(QOpenGLShader::Fragment, ":/shader/src/shaderImage.fsh");
+    shader.program.link();
+
+    glGenVertexArrays(1, &shader.vao);
+    glGenBuffers(1, &shader.vbo);
+
+    //使用VAO开始记录数据属性操作
+    glBindVertexArray(shader.vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, shader.vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vert), vert, GL_STATIC_DRAW);
+
+    GLuint location;
+
+    // 定义Attrib
+    location = (GLuint)glGetAttribLocation(shader.program.programId(), "in_Position");
+    glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), nullptr);
+    glEnableVertexAttribArray(location);
+    location = (GLuint)glGetAttribLocation(shader.program.programId(), "in_Color");
+    glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(location);
+    location = (GLuint)glGetAttribLocation(shader.program.programId(), "in_TexCoord");
+    glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (void*)(6 * sizeof(GLfloat)));
+    glEnableVertexAttribArray(location);
+
+//    //定义数据属性 - 位置属性（最大取9个浮点数（第5个参数），从0位置开始（第6个参数），取3个浮点数数据（第2个参数））
+//    location = (GLuint)glGetAttribLocation(_shaderProgram.programId(), "in_Position");
+//    glEnableVertexAttribArray(location);
+//    glVertexAttribPointer(location, 3, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), nullptr);
+
+//    //定义数据属性 - 颜色属性（最大取9个浮点数（第5个参数），从3位置开始（第6个参数），取4个浮点数数据（第2个参数））
+//    location = (GLuint)glGetAttribLocation(_shaderProgram.programId(), "in_Color");
+//    glEnableVertexAttribArray(location);
+//    glVertexAttribPointer(location, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+
+//    //定义数据属性 - 纹理坐标属性（最大取9个浮点数（第5个参数），从7位置开始（第6个参数），取2个浮点数数据（第2个参数））
+//    location = (GLuint)glGetAttribLocation(_shaderProgram.programId(), "in_TexCoord");
+//    glEnableVertexAttribArray(location);
+//    glVertexAttribPointer(location, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(GLfloat), (void*)(7 * sizeof(GLfloat)));
+
+    //解除绑定缓存区
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    //索引缓存对象
+    glGenBuffers(1, &shader.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shader.ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    //结束记录数据属性的操作
+    glBindVertexArray(0);
+
+    shader.program.setUniformValue("u_sTexImg", 0);
+    shader.program.setUniformValue("u_vWindowSize", (float)width(), (float)height());
+//    shader.program.setUniformValue("u_vBlendColor", 0.80f, 0.85f, 0.81f, 1.0f);
+    shader.locationWindowSize = glGetUniformLocation(shader.program.programId(), "u_vWindowSize");
+    shader.locationTexPos = glGetUniformLocation(shader.program.programId(), "u_vTexPos");
+    shader.locationTexSize = glGetUniformLocation(shader.program.programId(), "u_vTexSize");
+    shader.locationRotation = glGetUniformLocation(shader.program.programId(), "u_fRotation");
 
     data.asset.textureBedEmpty = new QOpenGLTexture(QImage(":/bed/src/bedEmpty.png"));
     data.asset.sleeperTextures = {
@@ -376,23 +465,18 @@ void SleepRoom::initializeGL() {
 
     glClearColor(0.70f, 0.75f, 0.71f, 1.0f);
 
-//    data.glInitialized = true;
+    data.glInitialized = true;
 }
 void SleepRoom::paintGL() {
-//    QRect winRect = rect();
-    QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing);
-    p.beginNativePainting();
-
     glClear(GL_COLOR_BUFFER_BIT);
-    glViewport(0, 0, width(), height());
-    glLoadIdentity();
+
+    glBindVertexArray(shader.vao);
+    shader.program.bind();
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     if(data.asset.textureBedEmpty) {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glEnable(GL_TEXTURE_2D);
-
         // 绘制床
         int bx1 = viewXToBedX(winXToViewX(0)), bx2 = viewXToBedX(winXToViewX(width()));
         int by1 = viewYToBedY(winYToViewY(0)), by2 = viewYToBedY(winYToViewY(height()));
@@ -404,81 +488,62 @@ void SleepRoom::paintGL() {
                 if(data.player.inBed && data.player.bedX == i && data.player.bedY == j) {
                     texture = data.asset.sleeperTextures[mRole].bed;
                 }
-                texture->bind();
                 double x = viewXToWinX(bedXToViewX(i)), y = viewYToWinY(bedYToViewY(j));
-                double w = texture->width() * data.view.adjustedScaleFactor;
-                double h = texture->height() * data.view.adjustedScaleFactor;
-                glBegin(GL_QUADS);
-                textureCoord(QRectF(x - w / 2, y - h / 2, w, h));
-                glEnd();
+                paintTexture(texture, QPointF(x, y), QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0);
             }
         }
-
-        glDisable(GL_TEXTURE_2D);
-        glDisable(GL_BLEND);
     }
 
     QOpenGLTexture *roleTexture = data.asset.sleeperTextures[mRole].walk;
-    if(!data.player.inBed) {
-        if(roleTexture) {
-            roleTexture->bind();
-
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glEnable(GL_TEXTURE_2D);
-            glBegin(GL_QUADS);
-
-            // 绘制玩家
-            double w = roleTexture->width() * data.view.adjustedScaleFactor;
-            double h = roleTexture->height() * data.view.adjustedScaleFactor;
-            textureCoord(QRectF(viewXToWinX(data.player.x) - w / 2, viewYToWinY(data.player.y - 50) - h / 2, w, h));
-
-            glEnd();
-            glDisable(GL_TEXTURE_2D);
-            glDisable(GL_BLEND);
-        }
+    if(!data.player.inBed && roleTexture) {
+        // 绘制玩家
+        paintTexture(
+            roleTexture, QPointF(viewXToWinX(data.player.x), viewYToWinY(data.player.y)),
+            QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0
+        );
     }
 
-    p.endNativePainting();
+//    p.endNativePainting();
+////    QPainter p(this);
+////    p.setRenderHint(QPainter::Antialiasing);
 
-    QFont font;
-    font.setPointSize(12);
-    p.setFont(font);
+//    QFont font;
+//    font.setPointSize(12);
+//    p.setFont(font);
 
-    QFontMetrics fm(font);
+//    QFontMetrics fm(font);
 
-    // 绘制玩家名称
-    if(roleTexture) {
-        QSizeF size = fm.boundingRect(mName).size() + QSizeF(10, 10);
-        QPointF pos;
-        if(data.player.inBed) {
-            pos = QPointF(
-                        viewXToWinX(bedXToViewX(data.player.bedX)) - size.width() / 2.0,
-                        viewYToWinY(bedYToViewY(data.player.bedY) - hBed * 0.4) - size.height()
-                        );
-        } else {
-            pos = QPointF(viewXToWinX(data.player.x) - size.width() / 2.0, viewYToWinY(data.player.y - 115) - size.height());
-        }
-        QRectF rect(pos, size);
-        p.setPen(Qt::NoPen);
-        p.setBrush(QColor(0, 0, 0, 128));
-        p.drawRect(rect);
-        p.setPen(Qt::white);
-        p.drawText(rect, Qt::AlignCenter, mName);
-    }
+//    // 绘制玩家名称
+//    QSizeF size = fm.boundingRect(mName).size() + QSizeF(10, 10);
+//    QPointF pos;
+//    if(data.player.inBed) {
+//        pos = QPointF(
+//                    viewXToWinX(bedXToViewX(data.player.bedX)) - size.width() / 2.0,
+//                    viewYToWinY(bedYToViewY(data.player.bedY) - hBed * 0.4) - size.height()
+//                    );
+//    } else {
+//        pos = QPointF(viewXToWinX(data.player.x) - size.width() / 2.0, viewYToWinY(data.player.y - 115) - size.height());
+//    }
+//    QRectF rect(pos, size);
+//    p.setPen(Qt::NoPen);
+//    p.setBrush(QColor(0, 0, 0, 128));
+//    p.drawRect(rect);
+//    p.setPen(Qt::white);
+//    p.drawText(rect, Qt::AlignCenter, mName);
 
-    // 绘制路线
-    if(!data.player.path.isEmpty()) {
-        p.setPen(QPen(QColor(255, 255, 255, 100), 2));
-        QPointF prev(viewXToWinX(data.player.x), viewYToWinY(data.player.y));
-        for(const QPointF &pos : qAsConst(data.player.path)) {
-            QPointF cur(viewXToWinX(pos.x()), viewYToWinY(pos.y()));
-            p.drawLine(prev, cur);
-            prev = cur;
-        }
-    }
+//    // 绘制路线
+//    if(!data.player.path.isEmpty()) {
+//        p.setPen(QPen(QColor(255, 255, 255, 100), 2));
+//        QPointF prev(viewXToWinX(data.player.x), viewYToWinY(data.player.y));
+//        for(const QPointF &pos : qAsConst(data.player.path)) {
+//            QPointF cur(viewXToWinX(pos.x()), viewYToWinY(pos.y()));
+//            p.drawLine(prev, cur);
+//            prev = cur;
+//        }
+//    }
+
 }
+
 void SleepRoom::resizeGL(int w, int h) {
-    Q_UNUSED(w)
-    Q_UNUSED(h)
+    shader.program.setUniformValue(shader.locationWindowSize, (float)w, (float)h);
 }

@@ -8,7 +8,7 @@ Widget::Widget(QWidget *parent)
       mMainpage(new Mainpage(this)), mSleepRoom(new SleepRoom(this)),
       mSocket(new QTcpSocket(this))
 {
-    mStkLayout->setMargin(0);
+    mStkLayout->setContentsMargins(QMargins());
     mStkLayout->addWidget(mMainpage);
     mStkLayout->addWidget(mSleepRoom);
     mStkLayout->setCurrentWidget(mMainpage);
@@ -23,7 +23,11 @@ Widget::Widget(QWidget *parent)
     connect(mSocket, &QTcpSocket::connected, this, &Widget::onConnected);
     connect(mSocket, &QTcpSocket::disconnected, this, &Widget::onDisconnected);
     connect(mSocket, &QTcpSocket::readyRead, this, &Widget::onReadyRead);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    connect(mSocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred), this, [this](QAbstractSocket::SocketError err) {
+#else
     connect(mSocket, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::error), this, [this](QAbstractSocket::SocketError err) {
+#endif
         if(err != QAbstractSocket::RemoteHostClosedError)
             QMessageBox::critical(this, "错误", QString("连接失败\n") + QMetaEnum::fromType<QAbstractSocket::SocketError>().key(err));
     });
@@ -65,6 +69,8 @@ void Widget::onDisconnected() {
 void Widget::onReadyRead() {
     QList<QByteArray> codes = mSocket->readAll().split(EOF);
     for(const QByteArray &code : qAsConst(codes)) {
+        if(code.isEmpty())
+            continue;
         QJsonDocument doc = QJsonDocument::fromJson(code);
         if(doc.isNull())
             return;

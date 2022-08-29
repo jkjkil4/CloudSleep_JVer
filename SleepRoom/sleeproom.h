@@ -3,7 +3,7 @@
 
 #include <QWidget>
 #include <QOpenGLWidget>
-#include <QOpenGLFunctions_1_1>
+#include <QOpenGLExtraFunctions>
 #include <QOpenGLTexture>
 #include <QOpenGLShaderProgram>
 #include <QPainter>
@@ -11,7 +11,7 @@
 #include <QTimer>
 #include <QWheelEvent>
 
-class SleepRoom : public QOpenGLWidget, protected QOpenGLFunctions_1_1
+class SleepRoom : public QOpenGLWidget, protected QOpenGLExtraFunctions
 {
     Q_OBJECT
 public:
@@ -87,9 +87,10 @@ public:
 
     bool collisionBed(double viewx, double viewy);
 
-protected:
-    void textureCoord(const QRectF &rect);
+public:
+    void paintTexture(QOpenGLTexture *texture, const QPointF &pos, const QSizeF &scale, double rotation);
 
+protected:
     void initializeGL() override;
     void paintGL() override;
     void resizeGL(int w, int h) override;
@@ -117,7 +118,16 @@ private:
             QVector<SleeperTexture> sleeperTextures;
         } asset;
 
+        bool glInitialized;
     } data;
+
+    struct {
+        GLuint vbo;
+        GLuint vao;
+        GLuint ebo;
+        QOpenGLShaderProgram program;
+        GLint locationWindowSize, locationTexPos, locationTexSize, locationRotation;
+    } shader;
 };
 
 #endif // SLEEPROOM_H
