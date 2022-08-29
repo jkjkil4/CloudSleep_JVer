@@ -5,6 +5,7 @@
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions_1_1>
 #include <QOpenGLTexture>
+#include <QOpenGLShaderProgram>
 #include <QPainter>
 #include <QtMath>
 #include <QTimer>
@@ -18,9 +19,49 @@ public:
     ~SleepRoom() override;
 
     int floorMod(int val, int mod);
+    double sqr(double v);
+
+    void setName(const QString &name);
+    void setRole(int role);
+    void setId(qulonglong id);
+
+    void clear();
+
+private:
+    QString mName;
+    int mRole;
+    qulonglong mId;
+
+    struct Sleeper {
+        double x, y;
+        QList<QPointF> path;
+        int bedX, bedY;
+        bool inBed = false;
+    };
+
+public:
+    QList<QPointF> pathTo(const QPointF &start, QPointF end);
+    bool doPath(QList<QPointF> &path, double &x, double &y);
 
 protected:
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
     void wheelEvent(QWheelEvent *ev) override;
+
+public:
+    void onPos(qulonglong id, double x, double y);
+    void onMove(qulonglong id, double x, double y);
+    void onSleep(qulonglong id, int x, int y);
+
+signals:
+    void sPos(double x, double y);
+    void sMove(double x, double y);
+    void sSleep(int x, int y);
+
+private:
+    QPoint mMousePrev;
+    bool clickFlag = true;
 
 public slots:
     void onTimerTimeout();
@@ -44,6 +85,8 @@ public:
     double bedXToViewX(int bedx);
     double bedYToViewY(int bedy);
 
+    bool collisionBed(double viewx, double viewy);
+
 protected:
     void textureCoord(const QRectF &rect);
 
@@ -52,10 +95,10 @@ protected:
     void resizeGL(int w, int h) override;
 
 private:
-    static constexpr int wSpc = 16;
-    static constexpr int hSpc = 16;
-    static constexpr int wBed = 162;
-    static constexpr int hBed = 260;
+    static constexpr int wSpc = 40;
+    static constexpr int hSpc = 40;
+    static constexpr int wBed = 151;
+    static constexpr int hBed = 247;
 
     struct {
         struct {
@@ -63,17 +106,17 @@ private:
             double xOffset, yOffset;
         } view;
 
-        struct {
-            double x, y;
-        } player;
+        Sleeper player;
+        QList<Sleeper> otherSleeper;
+        qulonglong counter;
 
         struct {
-            QImage pixBedEmpty, pixBedBoy, pixBedGirl;
             QOpenGLTexture *textureBedEmpty;
-            QVector<QOpenGLTexture *> textureBeds;
+
+            struct SleeperTexture { QOpenGLTexture *walk, *bed; };
+            QVector<SleeperTexture> sleeperTextures;
         } asset;
 
-        bool glState = false;
     } data;
 };
 

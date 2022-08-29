@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1047</width>
-    <height>629</height>
+    <height>632</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -82,10 +82,10 @@
 	border: none;
 }
 :hover {
-	background: #555555;
+	background: rgba(255,255,255,20);
 }
 :pressed {
-	background: #333333;
+	background: rgba(0,0,0,20);
 }</string>
        </property>
        <property name="text">
@@ -138,10 +138,10 @@
 	border: none;
 }
 :hover {
-	background: #555555;
+	background: rgba(255,255,255,20);
 }
 :pressed {
-	background: #333333;
+	background: rgba(0,0,0,20);
 }</string>
        </property>
        <property name="text">

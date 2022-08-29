@@ -25,6 +25,10 @@ public slots:
     void onDisconnected();
     void onReadyRead();
 
+    void pos(double x, double y);
+    void move(double x, double y);
+    void sleep(int x, int y);
+
 protected:
     void closeEvent(QCloseEvent *) override;
 

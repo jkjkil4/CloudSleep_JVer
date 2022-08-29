@@ -15,7 +15,7 @@ Widget::Widget(QWidget *parent)
     setLayout(mStkLayout);
 
     setObjectName("Widget");
-    setStyleSheet("#Widget{background:#444444;}");
+    setStyleSheet("#Widget{background:#98a39a;}");
     resize(1000, 660);
 
     connect(mMainpage, &Mainpage::enter, this, &Widget::onEnter);
@@ -27,6 +27,10 @@ Widget::Widget(QWidget *parent)
         if(err != QAbstractSocket::RemoteHostClosedError)
             QMessageBox::critical(this, "错误", QString("连接失败\n") + QMetaEnum::fromType<QAbstractSocket::SocketError>().key(err));
     });
+
+    connect(mSleepRoom, &SleepRoom::sPos, this, &Widget::pos);
+    connect(mSleepRoom, &SleepRoom::sMove, this, &Widget::move);
+    connect(mSleepRoom, &SleepRoom::sSleep, this, &Widget::sleep);
 }
 
 Widget::~Widget()
@@ -59,17 +63,73 @@ void Widget::onDisconnected() {
 }
 
 void Widget::onReadyRead() {
-    QJsonDocument doc = QJsonDocument::fromJson(mSocket->readAll());
-    if(doc.isNull())
-        return;
-    QJsonObject root = doc.object();
-    QString type = root.value("type").toString();
+    QList<QByteArray> codes = mSocket->readAll().split(EOF);
+    for(const QByteArray &code : qAsConst(codes)) {
+        QJsonDocument doc = QJsonDocument::fromJson(code);
+        if(doc.isNull())
+            return;
+        QJsonObject root = doc.object();
+        QString type = root.value("type").toString();
 
-    if(type == "ConnErr") {
-        QMessageBox::critical(this, "错误", "连接失败\n" + root.value("str").toString());
-    } else if(type == "ConnSucc") {
-        mStkLayout->setCurrentWidget(mSleepRoom);
+        if(type == "ConnErr") {
+            QMessageBox::critical(this, "错误", "连接失败\n" + root.value("str").toString());
+        } else if(type == "ConnSucc") {
+            mSleepRoom->clear();
+            mSleepRoom->setName(mName);
+            mSleepRoom->setRole(mRole);
+            mSleepRoom->setId(root.value("id").toString().toULongLong());
+            mStkLayout->setCurrentWidget(mSleepRoom);
+        } else if(type == "pos") {
+            mSleepRoom->onPos(
+                        root.value("id").toString().toULongLong(),
+                        root.value("x").toDouble(),
+                        root.value("y").toDouble()
+                        );
+        } else if(type == "move") {
+            mSleepRoom->onMove(
+                        root.value("id").toString().toULongLong(),
+                        root.value("x").toDouble(),
+                        root.value("y").toDouble()
+                        );
+        } else if(type == "sleep") {
+            mSleepRoom->onSleep(
+                        root.value("id").toString().toULongLong(),
+                        root.value("bx").toInt(),
+                        root.value("by").toInt()
+                        );
+        }
     }
+}
+
+void Widget::pos(double x, double y) {
+    QJsonDocument doc;
+    QJsonObject root;
+    root.insert("type", "pos");
+    root.insert("x", x);
+    root.insert("y", y);
+    doc.setObject(root);
+    mSocket->write(doc.toJson(QJsonDocument::Compact));
+    mSocket->write(QByteArray(1, EOF));
+}
+void Widget::move(double x, double y) {
+    QJsonDocument doc;
+    QJsonObject root;
+    root.insert("type", "move");
+    root.insert("x", x);
+    root.insert("y", y);
+    doc.setObject(root);
+    mSocket->write(doc.toJson(QJsonDocument::Compact));
+    mSocket->write(QByteArray(1, EOF));
+}
+void Widget::sleep(int x, int y) {
+    QJsonDocument doc;
+    QJsonObject root;
+    root.insert("type", "sleep");
+    root.insert("bx", x);
+    root.insert("by", y);
+    doc.setObject(root);
+    mSocket->write(doc.toJson(QJsonDocument::Compact));
+    mSocket->write(QByteArray(1, EOF));
 }
 
 void Widget::closeEvent(QCloseEvent *) {
