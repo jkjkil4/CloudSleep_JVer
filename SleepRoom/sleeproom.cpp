@@ -14,6 +14,11 @@ SleepRoom::SleepRoom(QWidget *parent)
     mElapsedTimer.start();
 
     connect(mOverlay, &Overlay::paint, this, &SleepRoom::onPaint);
+
+    data.asset.sleeperImages = {
+        { QImage(":/role/src/Boy.png"), QImage(":/bed/src/bedBoy.png") },
+        { QImage(":/role/src/Girl.png"), QImage(":/bed/src/bedGirl.png") }
+    };
 }
 
 SleepRoom::~SleepRoom() {
@@ -374,7 +379,7 @@ void SleepRoom::onSleeper(const QString &name, int role, qulonglong id, double x
     auto iter = data.otherSleeper.constFind(id);
     if(iter != data.otherSleeper.cend())
         return;
-    data.otherSleeper[id] = Sleeper{ name, qBound(0, role, (int)data.asset.sleeperTextures.length()), id, x, y, bx, by, inBed, {} };
+    data.otherSleeper[id] = Sleeper{ name, qBound(0, role, data.asset.sleeperImages.length() - 1), id, x, y, bx, by, inBed, {} };
 }
 void SleepRoom::onLeave(qulonglong id) {
     auto iter = data.otherSleeper.find(id);
@@ -481,7 +486,7 @@ void SleepRoom::initializeGL() {
        -1.0f,  1.0f, 0.0f,      0.0f, 1.0f
     };
 
-    //定义索引数据
+    // 索引数据
     unsigned int indices[] = {
         0, 1, 3,
         1, 2, 3
@@ -530,6 +535,10 @@ void SleepRoom::initializeGL() {
     shader.locationRotation = glGetUniformLocation(shader.program.programId(), "u_fRotation");
 
     data.asset.textureBedEmpty = new QOpenGLTexture(QImage(":/bed/src/bedEmpty.png"));
+    data.asset.sleeperTextures.reserve(data.asset.sleeperImages.length());
+    for(const auto &image : qAsConst(data.asset.sleeperImages)) {
+        data.asset.sleeperTextures.append({ new QOpenGLTexture(image.walk), new QOpenGLTexture(image.bed) });
+    }
     data.asset.sleeperTextures = {
         {new QOpenGLTexture(QImage(":/role/src/Boy.png")), new QOpenGLTexture(QImage(":/bed/src/bedBoy.png"))},
         {new QOpenGLTexture(QImage(":/role/src/Girl.png")), new QOpenGLTexture(QImage(":/bed/src/bedGirl.png"))}
@@ -563,7 +572,7 @@ void SleepRoom::paintGL() {
                 } else {
                     for(const Sleeper &sleeper : qAsConst(data.otherSleeper)) {
                         if(sleeper.inBed && sleeper.bedX == i && sleeper.bedY == j) {
-                            texture = data.asset.sleeperTextures[sleeper.role].bed;
+                            texture = data.asset.sleeperTextures.value(sleeper.role).bed;
                             break;
                         }
                     }

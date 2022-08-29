@@ -8,6 +8,8 @@ Widget::Widget(QWidget *parent)
       mMainpage(new Mainpage(this)), mSleepRoom(new SleepRoom(this)),
       mSocket(new QTcpSocket(this))
 {
+    mSleepRoom->repaint();
+
     mStkLayout->setContentsMargins(QMargins());
     mStkLayout->addWidget(mMainpage);
     mStkLayout->addWidget(mSleepRoom);

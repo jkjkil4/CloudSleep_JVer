@@ -130,6 +130,9 @@ private:
         struct {
             QOpenGLTexture *textureBedEmpty;
 
+            struct SleeperImage { QImage walk, bed; };
+            QVector<SleeperImage> sleeperImages;
+
             struct SleeperTexture { QOpenGLTexture *walk, *bed; };
             QVector<SleeperTexture> sleeperTextures;
         } asset;
