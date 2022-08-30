@@ -24,7 +24,13 @@ SleepRoom::SleepRoom(QWidget *parent)
 }
 
 SleepRoom::~SleepRoom() {
-
+    if(data.glInitialized) {
+        data.asset.textureBedEmpty->release();
+        for(auto &st : data.asset.sleeperTextures) {
+            st.bed->release();
+            st.walk->release();
+        }
+    }
 }
 
 void SleepRoom::resizeEvent(QResizeEvent *ev) {
