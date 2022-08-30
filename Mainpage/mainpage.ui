@@ -107,14 +107,7 @@
       </widget>
      </item>
      <item>
-      <widget class="RoleDisplay" name="widgetRoles" native="true">
-       <property name="minimumSize">
-        <size>
-         <width>282</width>
-         <height>282</height>
-        </size>
-       </property>
-      </widget>
+      <widget class="RoleDisplay" name="widgetRoles" native="true"/>
      </item>
      <item>
       <widget class="QPushButton" name="btnRight">
@@ -248,6 +241,12 @@
        </item>
        <item row="1" column="1">
         <widget class="QLineEdit" name="editServ">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>32</height>
+          </size>
+         </property>
          <property name="font">
           <font>
            <pointsize>14</pointsize>
@@ -260,6 +259,12 @@
        </item>
        <item row="0" column="1">
         <widget class="QLineEdit" name="editName">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>32</height>
+          </size>
+         </property>
          <property name="font">
           <font>
            <pointsize>14</pointsize>
@@ -287,6 +292,12 @@
          </item>
          <item>
           <widget class="QPushButton" name="btnEnter">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>32</height>
+            </size>
+           </property>
            <property name="font">
             <font>
              <pointsize>10</pointsize>

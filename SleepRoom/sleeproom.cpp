@@ -736,10 +736,6 @@ void SleepRoom::onPaint(QPainter *p) {
     p->setRenderHint(QPainter::Antialiasing);
 
     QFont font;
-    font.setPointSize(12);
-    p->setFont(font);
-
-    QFontMetrics fm(font);
 
     // 绘制玩家名称和聊天
     QRectF winRect = rect();
@@ -755,6 +751,10 @@ void SleepRoom::onPaint(QPainter *p) {
         }
 
         // 绘制名称
+        font.setPointSize(12);
+        QFontMetrics fm(font);
+        p->setFont(font);
+
         QSizeF size = fm.boundingRect(sleeper->name).size() + QSizeF(14, 10);
         QRectF nameRect(pos - QPointF(size.width() / 2.0, size.height()), size);
         pos.ry() -= size.height() + 2;
@@ -767,6 +767,10 @@ void SleepRoom::onPaint(QPainter *p) {
         }
 
         // 绘制聊天
+        font.setPointSize(13);
+        fm = QFontMetrics(font);
+        p->setFont(font);
+
         for(auto iter = sleeper->chats.crbegin(); iter != sleeper->chats.crend(); ++iter) {
             const Sleeper::Chat &chat = *iter;
             QSizeF size = fm.boundingRect(chat.str).size() + QSizeF(10, 6);

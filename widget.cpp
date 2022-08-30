@@ -73,11 +73,11 @@ void Widget::onDisconnected() {
 
 void Widget::onReadyRead() {
     QByteArray all = mSocket->readAll();
-    QList<QByteArray> codes = all.split(EOF);
+    QList<QByteArray> codes = all.split((char)EOF);
     if(!mSocketBuffer.isEmpty() && !codes.isEmpty())
         codes[0].insert(0, mSocketBuffer);
 
-    if(!all.isEmpty() && all.at(all.length() - 1) != EOF && !codes.isEmpty()) {
+    if(!all.isEmpty() && all.at(all.length() - 1) != (char)EOF && !codes.isEmpty()) {
         mSocketBuffer = *codes.crbegin();
         codes.removeLast();
     } else mSocketBuffer.clear();
@@ -147,7 +147,7 @@ void Widget::pos(double x, double y) {
     root.insert("y", y);
     doc.setObject(root);
     mSocket->write(doc.toJson(QJsonDocument::Compact));
-    mSocket->write(QByteArray(1, EOF));
+    mSocket->write(QByteArray(1, (char)EOF));
 }
 void Widget::move(double x, double y) {
     QJsonDocument doc;
@@ -157,7 +157,7 @@ void Widget::move(double x, double y) {
     root.insert("y", y);
     doc.setObject(root);
     mSocket->write(doc.toJson(QJsonDocument::Compact));
-    mSocket->write(QByteArray(1, EOF));
+    mSocket->write(QByteArray(1, (char)EOF));
 }
 void Widget::sleep(int bx, int by) {
     QJsonDocument doc;
@@ -167,7 +167,7 @@ void Widget::sleep(int bx, int by) {
     root.insert("by", by);
     doc.setObject(root);
     mSocket->write(doc.toJson(QJsonDocument::Compact));
-    mSocket->write(QByteArray(1, EOF));
+    mSocket->write(QByteArray(1, (char)EOF));
 }
 void Widget::chat(const QString &str) {
     QJsonDocument doc;
@@ -176,7 +176,7 @@ void Widget::chat(const QString &str) {
     root.insert("str", str);
     doc.setObject(root);
     mSocket->write(doc.toJson(QJsonDocument::Compact));
-    mSocket->write(QByteArray(1, EOF));
+    mSocket->write(QByteArray(1, (char)EOF));
 }
 
 void Widget::closeEvent(QCloseEvent *) {

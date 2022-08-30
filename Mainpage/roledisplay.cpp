@@ -6,8 +6,13 @@ RoleDisplay::RoleDisplay(QWidget *parent)
                               QPixmap(":/role/src/Girl.png")
                               })
 {
+#ifdef Q_OS_ANDROID
+    setMinimumSize(100, 100);
+    setMaximumSize(100, 100);
+#else
     setMinimumSize(282, 282);
     setMaximumSize(282, 282);
+#endif
 }
 
 void RoleDisplay::setInd(int ind) {
