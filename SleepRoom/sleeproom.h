@@ -10,8 +10,11 @@
 #include <QtMath>
 #include <QTimer>
 #include <QWheelEvent>
-
 #include <QElapsedTimer>
+
+#ifdef Q_OS_ANDROID
+# include <QTouchEvent>
+#endif
 
 class Overlay;
 
@@ -57,31 +60,6 @@ private:
     };
 
 public:
-//    struct GridPos {
-//        int pos;
-//        enum Flag { L = 0, R = 1 } flag;
-//        inline bool operator==(const GridPos &other) const { return pos == other.pos && flag == other.flag; }
-//        inline bool operator!=(const GridPos &other) const { return pos != other.pos || flag != other.flag; }
-//        inline bool operator<(const GridPos &other) const { return pos < other.pos || (pos == other.pos && flag < other.flag); }
-//        inline bool operator>(const GridPos &other) const { return pos > other.pos || (pos == other.pos && flag > other.flag); }
-//        inline void operator++() {
-//            if(flag == R) {
-//                ++pos;
-//                flag = L;
-//            } else flag = R;
-//        }
-//        inline void operator--() {
-//            if(flag == L) {
-//                --pos;
-//                flag = R;
-//            } else flag = L;
-//        }
-//    };
-//    GridPos xToGridPos(double x);
-//    GridPos yToGridPos(double y);
-//    double gridPosToX(GridPos x, bool rightOrLeft);
-//    double gridPosToY(GridPos y, bool downOrUp);
-
     QPointF bedUL(int bx, int by);
     QPointF bedUR(int bx, int by);
     QPointF bedDL(int bx, int by);
@@ -91,7 +69,6 @@ public:
 
     void pathTo(QList<QPointF> &path, const QPointF &start, QPointF end);
     void pathTo(QList<QPointF> &path, int xStart, int yStart, int xEnd, int yEnd);
-//    bool pathTo(QList<QPointF> &path, bool xtrend, bool ytrend, GridPos start, GridPos starty, GridPos endx, GridPos endy, int depth);
     bool doPath(QList<QPointF> &path, double &x, double &y, double step);
 
 protected:
@@ -99,6 +76,21 @@ protected:
     void mouseMoveEvent(QMouseEvent *ev) override;
     void mouseReleaseEvent(QMouseEvent *ev) override;
     void wheelEvent(QWheelEvent *ev) override;
+
+#ifdef Q_OS_ANDROID
+protected:
+    bool event(QEvent *ev) override;
+
+private:
+    bool touchBeginEventProcess(QTouchEvent *ev);
+    bool touchUpdateEventProcess(QTouchEvent *ev);
+    bool touchEndEventProcess(QTouchEvent *ev);
+
+    bool mTouchHolding[2];
+    QPointF mTouchPos[2];
+    double mTouchDis = 0;
+    bool mBlockRelease = false;
+#endif
 
 public:
     void onPos(qulonglong id, double x, double y);
@@ -164,6 +156,8 @@ private:
     static constexpr int wBed = 151;
     static constexpr int hBed = 247;
 
+    struct SleeperImage { QImage walk, bed; };
+    struct SleeperTexture { QOpenGLTexture *walk, *bed; };
     struct {
         struct {
             double scaleFactor = 0, adjustedScaleFactor = qPow(2, 0);
@@ -178,11 +172,7 @@ private:
 
         struct {
             QOpenGLTexture *textureBedEmpty;
-
-            struct SleeperImage { QImage walk, bed; };
             QVector<SleeperImage> sleeperImages;
-
-            struct SleeperTexture { QOpenGLTexture *walk, *bed; };
             QVector<SleeperTexture> sleeperTextures;
         } asset;
 

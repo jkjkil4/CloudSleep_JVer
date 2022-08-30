@@ -21,6 +21,10 @@ SleepRoom::SleepRoom(QWidget *parent)
         { QImage(":/role/src/Boy.png"), QImage(":/bed/src/bedBoy.png") },
         { QImage(":/role/src/Girl.png"), QImage(":/bed/src/bedGirl.png") }
     };
+
+#ifdef Q_OS_ANDROID
+    setAttribute(Qt::WA_AcceptTouchEvents);
+#endif
 }
 
 SleepRoom::~SleepRoom() {
@@ -273,15 +277,24 @@ bool SleepRoom::doPath(QList<QPointF> &path, double &a, double &b, double step) 
 }
 
 void SleepRoom::mousePressEvent(QMouseEvent *ev) {
-    if(ev->button() != Qt::LeftButton)
+//#ifdef Q_OS_ANDROID
+//    if(mTouchHolding[0] && mTouchHolding[1])
+//        return;
+//#endif
+    if(!(ev->buttons() & Qt::LeftButton))
         return;
 
     mMousePrev = ev->pos();
     clickFlag = true;
 }
 void SleepRoom::mouseMoveEvent(QMouseEvent *ev) {
+#ifdef Q_OS_ANDROID
+    if(mTouchHolding[0] && mTouchHolding[1])
+        return;
+#endif
     if(!(ev->buttons() & Qt::LeftButton))
         return;
+
 
     int dx = ev->x() - mMousePrev.x();
     int dy = ev->y() - mMousePrev.y();
@@ -297,6 +310,15 @@ void SleepRoom::mouseMoveEvent(QMouseEvent *ev) {
     }
 }
 void SleepRoom::mouseReleaseEvent(QMouseEvent *ev) {
+#ifdef Q_OS_ANDROID
+    mTouchHolding[0] = false;
+    mTouchHolding[1] = false;
+    if(mBlockRelease) {
+        mBlockRelease = false;
+        return;
+    }
+#endif
+
     if(ev->button() == Qt::LeftButton && clickFlag) {
         if(collisionBed(data.player.x, data.player.y)) {
             double bedCenter = bedXToViewX(viewXToBedX(data.player.x));
@@ -319,7 +341,6 @@ void SleepRoom::mouseReleaseEvent(QMouseEvent *ev) {
     }
 }
 
-
 void SleepRoom::wheelEvent(QWheelEvent *ev) {
 #ifdef Q_OS_ANDROID
     Q_UNUSED(ev)
@@ -328,6 +349,65 @@ void SleepRoom::wheelEvent(QWheelEvent *ev) {
     data.view.adjustedScaleFactor = qPow(2, data.view.scaleFactor);
 #endif
 }
+
+#ifdef Q_OS_ANDROID
+bool SleepRoom::event(QEvent *ev) {
+    switch (ev->type()) {
+    case QEvent::TouchBegin:
+        return touchBeginEventProcess((QTouchEvent*)ev);
+    case QEvent::TouchUpdate:
+        return touchUpdateEventProcess((QTouchEvent*)ev);
+    default:;
+    }
+    return QOpenGLWidget::event(ev);
+}
+
+bool SleepRoom::touchBeginEventProcess(QTouchEvent *ev) {
+    const QList<QEventPoint> &points = ev->points();
+    for(const QEventPoint &point : points) {
+        if(point.id() > 1)
+            continue;
+        mTouchHolding[point.id()] = true;
+        mTouchPos[point.id()] = point.position();
+    }
+
+    if(!mTouchHolding[0] || !mTouchHolding[1])
+        return false;
+
+    mBlockRelease = true;
+    mTouchDis = qSqrt(sqr(mTouchPos[0].x() - mTouchPos[1].x()) + sqr(mTouchPos[0].y() - mTouchPos[1].y()));
+
+    ev->accept();
+    return true;
+}
+bool SleepRoom::touchUpdateEventProcess(QTouchEvent *ev) {
+    const QList<QEventPoint> &points = ev->points();
+    for(const QEventPoint &point : points) {
+        if(point.id() > 1)
+            continue;
+        mTouchPos[point.id()] = point.position();
+    }
+
+    double dis = qSqrt(sqr(mTouchPos[0].x() - mTouchPos[1].x()) + sqr(mTouchPos[0].y() - mTouchPos[1].y()));
+    data.view.scaleFactor = qBound<double>(-2.1, data.view.scaleFactor + (dis - mTouchDis) / 100, 1.8);
+    data.view.adjustedScaleFactor = qPow(2, data.view.scaleFactor);
+    mTouchDis = dis;
+
+    ev->accept();
+    return true;
+}
+bool SleepRoom::touchEndEventProcess(QTouchEvent *ev) {
+    const QList<QEventPoint> &points = ev->points();
+    for(const QEventPoint &point : points) {
+        if(point.id() > 1)
+            continue;
+        mTouchHolding[point.id()] = false;
+    }
+
+    ev->accept();
+    return true;
+}
+#endif
 
 void SleepRoom::onPos(qulonglong id, double x, double y) {
     auto iter = data.otherSleeper.find(id);
@@ -350,6 +430,7 @@ void SleepRoom::onSleep(qulonglong id, int bx, int by) {
         data.player.bedX = bx;
         data.player.bedY = by;
         data.player.inBed = true;
+        data.player.path.clear();
 
         double bedCenterX = bedXToViewX(bx), bedCenterY = bedYToViewY(by);
         double wLimit = qMax(1, width() - 80) / data.view.adjustedScaleFactor / 2;
@@ -364,6 +445,7 @@ void SleepRoom::onSleep(qulonglong id, int bx, int by) {
             iter->bedX = bx;
             iter->bedY = by;
             iter->inBed = true;
+            iter->path.clear();
         }
     }
 }
@@ -378,7 +460,7 @@ void SleepRoom::onSleeper(const QString &name, int role, qulonglong id, double x
     auto iter = data.otherSleeper.constFind(id);
     if(iter != data.otherSleeper.cend())
         return;
-    Sleeper &sleeper = data.otherSleeper[id] = Sleeper{ name, qBound(0, role, data.asset.sleeperImages.length() - 1), id, x, y, bx, by, inBed, {}, {} };
+    Sleeper &sleeper = data.otherSleeper[id] = Sleeper{ name, qBound(0, role, (int)data.asset.sleeperImages.length() - 1), id, x, y, bx, by, inBed, {}, {} };
     data.sortedSleepers << &sleeper;
 }
 void SleepRoom::onChat(qulonglong id, const QString &str) {
@@ -585,7 +667,7 @@ void SleepRoom::initializeGL() {
     data.asset.textureBedEmpty = new QOpenGLTexture(QImage(":/bed/src/bedEmpty.png"));
     data.asset.sleeperTextures.reserve(data.asset.sleeperImages.length());
     for(const auto &image : qAsConst(data.asset.sleeperImages)) {
-        data.asset.sleeperTextures.append({ new QOpenGLTexture(image.walk), new QOpenGLTexture(image.bed) });
+        data.asset.sleeperTextures.append(SleeperTexture{ new QOpenGLTexture(image.walk), new QOpenGLTexture(image.bed) });
     }
     data.asset.sleeperTextures = {
         {new QOpenGLTexture(QImage(":/role/src/Boy.png")), new QOpenGLTexture(QImage(":/bed/src/bedBoy.png"))},
