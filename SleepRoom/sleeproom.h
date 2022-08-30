@@ -99,6 +99,7 @@ public:
     double bedYToViewY(int bedy);
 
     bool collisionBed(double viewx, double viewy);
+    bool isBed(int bx, int by);
 
 public:
     void paintTexture(QOpenGLTexture *texture, const QPointF &pos, const QSizeF &scale, double rotation);
