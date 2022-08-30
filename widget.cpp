@@ -49,6 +49,7 @@ void Widget::onEnter() {
     mRole = data.role;
     if(mSocket->state() != QTcpSocket::UnconnectedState)
         mSocket->disconnectFromHost();
+
     mSocket->connectToHost(QHostAddress(data.address), data.port);
     mMainpage->saveConfig();
 }
@@ -66,14 +67,23 @@ void Widget::onDisconnected() {
         QMessageBox::warning(this, "提示", "与服务器断开连接");
         mStkLayout->setCurrentWidget(mMainpage);
     }
+    mSocketBuffer.clear();
 }
 
 void Widget::onReadyRead() {
-    QList<QByteArray> codes = mSocket->readAll().split(EOF);
+    QByteArray all = mSocket->readAll();
+    QList<QByteArray> codes = all.split(EOF);
+    if(!mSocketBuffer.isEmpty() && !codes.isEmpty())
+        codes[0].insert(0, mSocketBuffer);
+
+    if(!all.isEmpty() && all.at(all.length() - 1) != EOF && !codes.isEmpty()) {
+        mSocketBuffer = *codes.crbegin();
+        codes.removeLast();
+    } else mSocketBuffer.clear();
+
     for(const QByteArray &code : qAsConst(codes)) {
         if(code.isEmpty())
             continue;
-        qDebug().noquote() << code;
         QJsonDocument doc = QJsonDocument::fromJson(code);
         if(doc.isNull())
             return;
@@ -87,18 +97,6 @@ void Widget::onReadyRead() {
             mSleepRoom->setName(mName);
             mSleepRoom->setRole(mRole);
             mSleepRoom->setId(root.value("id").toString().toULongLong());
-
-            QJsonArray sleepers = root.value("sleeper").toArray();
-            for(QJsonValueRef val : sleepers) {
-                QJsonObject obj = val.toObject();
-                mSleepRoom->onSleeper(
-                            obj.value("name").toString(), obj.value("role").toInt(),
-                            obj.value("id").toString().toULongLong(),
-                            obj.value("x").toDouble(), obj.value("y").toDouble(),
-                            obj.value("bx").toInt(), obj.value("by").toInt(),
-                            obj.value("inBed").toBool()
-                            );
-            }
 
             mStkLayout->setCurrentWidget(mSleepRoom);
         } else if(type == "pos") {
@@ -125,7 +123,9 @@ void Widget::onReadyRead() {
             mSleepRoom->onSleeper(
                         root.value("name").toString(), root.value("role").toInt(),
                         root.value("id").toString().toULongLong(),
-                        0, 0, 0, 0, false
+                        root.value("x").toDouble(0), root.value("y").toDouble(0),
+                        root.value("bx").toInt(0), root.value("by").toInt(0),
+                        root.value("inBed").toBool(false)
                         );
         } else if(type == "leave") {
             mSleepRoom->onLeave(root.value("id").toString().toULongLong());

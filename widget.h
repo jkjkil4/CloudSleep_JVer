@@ -39,6 +39,7 @@ private:
     SleepRoom *mSleepRoom;
 
     QTcpSocket *mSocket;
+    QByteArray mSocketBuffer;
 
     QString mName;
     int mRole = 0;
