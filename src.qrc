@@ -8,9 +8,10 @@
         <file>src/bedBoy.png</file>
         <file>src/bedGirl.png</file>
     </qresource>
-    <qresource prefix="/arrow">
+    <qresource prefix="/icon">
         <file>src/arrowLeft.png</file>
         <file>src/arrowRight.png</file>
+        <file>src/Assist.png</file>
     </qresource>
     <qresource prefix="/shader">
         <file>src/shaderImage.fsh</file>

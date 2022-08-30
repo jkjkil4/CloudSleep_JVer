@@ -13,32 +13,34 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1,0">
+  <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0">
    <item>
-    <layout class="QHBoxLayout" name="horLayoutTop">
-     <item>
-      <spacer name="horSpacerTop">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
+    <spacer name="verSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horLayoutChat" stretch="4,0,3">
+    <layout class="QHBoxLayout" name="horLayoutChat" stretch="4,0,3,0">
      <item>
       <widget class="QLineEdit" name="editChat">
        <property name="minimumSize">
         <size>
          <width>0</width>
-         <height>34</height>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>32</height>
         </size>
        </property>
        <property name="font">
@@ -65,7 +67,13 @@
        <property name="minimumSize">
         <size>
          <width>0</width>
-         <height>34</height>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>32</height>
         </size>
        </property>
        <property name="font">
@@ -112,10 +120,56 @@
        </property>
       </spacer>
      </item>
+     <item>
+      <widget class="QPushButton" name="btnAssist">
+       <property name="minimumSize">
+        <size>
+         <width>32</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>32</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton{
+	color: #FFFFFF;
+	background-color: #eeeeee;
+	border: 1px solid black;
+	padding: 2px 30px;
+}
+
+:hover{
+	background-color: #ffffff;
+}
+:pressed{
+	background-color: #dddddd;
+}</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../src.qrc">
+         <normaloff>:/icon/src/Assist.png</normaloff>:/icon/src/Assist.png</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>28</width>
+         <height>29</height>
+        </size>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../src.qrc"/>
+ </resources>
  <connections/>
 </ui>

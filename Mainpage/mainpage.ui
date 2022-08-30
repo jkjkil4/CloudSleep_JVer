@@ -96,7 +96,7 @@
        </property>
        <property name="icon">
         <iconset resource="../src.qrc">
-         <normaloff>:/arrow/src/arrowLeft.png</normaloff>:/arrow/src/arrowLeft.png</iconset>
+         <normaloff>:/icon/src/arrowLeft.png</normaloff>:/icon/src/arrowLeft.png</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -148,7 +148,7 @@
        </property>
        <property name="icon">
         <iconset resource="../src.qrc">
-         <normaloff>:/arrow/src/arrowRight.png</normaloff>:/arrow/src/arrowRight.png</iconset>
+         <normaloff>:/icon/src/arrowRight.png</normaloff>:/icon/src/arrowRight.png</iconset>
        </property>
        <property name="iconSize">
         <size>

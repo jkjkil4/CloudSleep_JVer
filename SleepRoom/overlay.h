@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QPainter>
+#include <QMessageBox>
 
 namespace Ui {
 class Overlay;
@@ -15,6 +16,9 @@ class Overlay : public QWidget
 public:
     explicit Overlay(QWidget *parent = nullptr);
     ~Overlay() override;
+
+public slots:
+    void onBtnAssistClicked();
 
 protected:
     void paintEvent(QPaintEvent *) override;

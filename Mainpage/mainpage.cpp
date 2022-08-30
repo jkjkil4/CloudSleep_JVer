@@ -9,7 +9,7 @@ Mainpage::Mainpage(QWidget *parent) :
 
     ui->widgetRoles->setInd(mConfig.value("Cfg/Role").toInt());
     ui->editName->setText(mConfig.value("Cfg/Name").toString());
-    ui->editServ->setText(mConfig.value("Cfg/Serv", "127.0.0.1:18180").toString());
+    ui->editServ->setText(mConfig.value("Cfg/Serv", "39.107.236.153:18180").toString());
 
     connect(ui->btnLeft, &QPushButton::clicked, ui->widgetRoles, [this] { ui->widgetRoles->adjust(-1); });
     connect(ui->btnRight, &QPushButton::clicked, ui->widgetRoles, [this] { ui->widgetRoles->adjust(1); });
@@ -24,7 +24,7 @@ Mainpage::~Mainpage()
 Mainpage::Data Mainpage::data() {
     QString str = ui->editServ->text();
     int ind = str.indexOf(':');
-    return { ui->editName->text(), ui->widgetRoles->ind(), QHostAddress(str.left(ind)), (quint16)str.mid(ind + 1).toInt() };
+    return { ui->editName->text().trimmed(), ui->widgetRoles->ind(), QHostAddress(str.left(ind)), (quint16)str.midRef(ind + 1).toInt() };
 }
 
 void Mainpage::saveConfig() {
