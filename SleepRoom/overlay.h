@@ -23,6 +23,8 @@ signals:
     void paint(QPainter *p);
 
 private:
+    friend class SleepRoom;
+
     Ui::Overlay *ui;
 };
 

@@ -13,11 +13,11 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_2">
+  <layout class="QVBoxLayout" name="verticalLayout_2" stretch="1,0">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <layout class="QHBoxLayout" name="horLayoutTop">
      <item>
-      <spacer name="horizontalSpacer">
+      <spacer name="horSpacerTop">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -29,29 +29,18 @@
        </property>
       </spacer>
      </item>
-     <item>
-      <layout class="QVBoxLayout" name="verticalLayout">
-       <item>
-        <spacer name="verticalSpacer">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </item>
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout" stretch="4,2">
+    <layout class="QHBoxLayout" name="horLayoutChat" stretch="4,0,3">
      <item>
-      <widget class="QLineEdit" name="lineEdit">
+      <widget class="QLineEdit" name="editChat">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>34</height>
+        </size>
+       </property>
        <property name="font">
         <font>
          <pointsize>12</pointsize>
@@ -63,13 +52,50 @@
        <property name="styleSheet">
         <string notr="true">border: 1px solid black;</string>
        </property>
+       <property name="maxLength">
+        <number>128</number>
+       </property>
        <property name="placeholderText">
         <string>你好~</string>
        </property>
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer_2">
+      <widget class="QPushButton" name="btnChat">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>34</height>
+        </size>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QPushButton{
+	color: #FFFFFF;
+	background-color: rgb(20,196,188);
+	border: 1px solid black;
+	padding: 2px 30px;
+}
+
+:hover{
+	background-color: rgb(22,218,208);
+}
+:pressed{
+	background-color: rgb(17,171,164);
+}</string>
+       </property>
+       <property name="text">
+        <string>发送</string>
+       </property>
+       <property name="shortcut">
+        <string>Return</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horSpacerChat">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>

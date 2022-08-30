@@ -46,6 +46,13 @@ private:
         double x, y;
         int bedX, bedY;
         bool inBed = false;
+
+        struct Chat {
+            QString str;
+            int timer;
+        };
+        QList<Chat> chats;
+
         QList<QPointF> path;
     };
 
@@ -65,12 +72,16 @@ public:
     void onSleep(qulonglong id, int bx, int by);
     void onBlocked(int bx, int by);
     void onSleeper(const QString &name, int role, qulonglong id, double x, double y, int bx, int by, bool inBed);
+    void onChat(qulonglong id, const QString &str);
     void onLeave(qulonglong id);
+
+    void onBtnChatClicked();
 
 signals:
     void sPos(double x, double y);
     void sMove(double x, double y);
     void sSleep(int bx, int by);
+    void sChat(const QString &str);
 
 private:
     QPoint mMousePrev;

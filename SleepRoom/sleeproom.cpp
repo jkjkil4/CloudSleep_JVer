@@ -1,4 +1,5 @@
 #include "sleeproom.h"
+#include "ui_overlay.h"
 
 #include "overlay.h"
 
@@ -14,6 +15,7 @@ SleepRoom::SleepRoom(QWidget *parent)
     mElapsedTimer.start();
 
     connect(mOverlay, &Overlay::paint, this, &SleepRoom::onPaint);
+    connect(mOverlay->ui->btnChat, &QPushButton::clicked, this, &SleepRoom::onBtnChatClicked);
 
     data.asset.sleeperImages = {
         { QImage(":/role/src/Boy.png"), QImage(":/bed/src/bedBoy.png") },
@@ -66,13 +68,16 @@ QList<QPointF> SleepRoom::pathTo(const QPointF &start, QPointF end) {
     int startBX = viewXToBedX(start.x()), startBY = viewYToBedY(start.y());
     int endBX = viewXToBedX(end.x()), endBY = viewYToBedY(end.y());
 
+    bool collisionStart = collisionBed(start.x(), start.y());
     bool collisionEnd = collisionBed(end.x(), end.y());
     if(collisionEnd)
         end = QPointF(bedXToViewX(endBX), bedYToViewY(endBY));
 
     if(startBX == endBX && startBY == endBY)
-        return { end };
-    bool collisionStart = collisionBed(start.x(), start.y());
+        return isBed(startBX, startBY) && !collisionStart && !collisionEnd
+                ? QList<QPointF>{ QPointF(bedXToViewX(startBX) + wBed / 2.0, bedYToViewY(startBY) + hBed / 2.0), end }
+                : QList<QPointF>{ end };
+
     if(collisionStart != collisionEnd && ((startBX == endBX && qAbs(startBY - endBY) <= 1) || (qAbs(startBX - endBX) <= 1 && startBY == endBY)))
         return { end };
 
@@ -294,7 +299,7 @@ void SleepRoom::mouseMoveEvent(QMouseEvent *ev) {
 
     int dx = ev->x() - mMousePrev.x();
     int dy = ev->y() - mMousePrev.y();
-    if(abs(dx) > 10 || abs(dy) > 10)
+    if(abs(dx) > 16 || abs(dy) > 16)
         clickFlag = false;
 
     if(!clickFlag) {
@@ -389,8 +394,18 @@ void SleepRoom::onSleeper(const QString &name, int role, qulonglong id, double x
     auto iter = data.otherSleeper.constFind(id);
     if(iter != data.otherSleeper.cend())
         return;
-    Sleeper &sleeper = data.otherSleeper[id] = Sleeper{ name, qBound(0, role, data.asset.sleeperImages.length() - 1), id, x, y, bx, by, inBed, {} };
+    Sleeper &sleeper = data.otherSleeper[id] = Sleeper{ name, qBound(0, role, data.asset.sleeperImages.length() - 1), id, x, y, bx, by, inBed, {}, {} };
     data.sortedSleepers << &sleeper;
+}
+void SleepRoom::onChat(qulonglong id, const QString &str) {
+    if(id == data.player.id) {
+        data.player.chats << Sleeper::Chat{ str, 5000 };
+    } else {
+        auto iter = data.otherSleeper.find(id);
+        if(iter == data.otherSleeper.end())
+            return;
+        iter->chats << Sleeper::Chat{ str, 5000 };
+    }
 }
 void SleepRoom::onLeave(qulonglong id) {
     auto iter = data.otherSleeper.find(id);
@@ -405,36 +420,58 @@ void SleepRoom::onLeave(qulonglong id) {
     data.otherSleeper.erase(iter);
 }
 
+void SleepRoom::onBtnChatClicked() {
+    QString str = mOverlay->ui->editChat->text();
+    if(str.isEmpty())
+        return;
+    mOverlay->ui->editChat->clear();
+    emit sChat(str);
+}
+
 void SleepRoom::onTimerTimeout() {
     data.counter++;
 
-    std::sort(data.sortedSleepers.begin(), data.sortedSleepers.end(), [](Sleeper *a, Sleeper *b) {
-        return a->y < b->y;
-    });
-
+    // 得到离上一次Timeout的用时
     int elapsed = qMax(0, (int)mElapsedTimer.elapsed());
     mElapsedTimer.start();
     double step = (double)elapsed / 4.5;
 
+    // 将 data.sortedSleepers 按y从小到大排序
+    std::sort(data.sortedSleepers.begin(), data.sortedSleepers.end(), [](Sleeper *a, Sleeper *b) {
+        return a->y < b->y;
+    });
+
+    // 计算Chat的timer
+    for(Sleeper *sleeper : data.sortedSleepers) {
+        for(auto iter = sleeper->chats.begin(); iter != sleeper->chats.end(); ++iter) {
+            iter->timer -= elapsed;
+        }
+        while(!sleeper->chats.isEmpty() && sleeper->chats[0].timer <= 0) {
+            sleeper->chats.removeFirst();
+        }
+        if(sleeper->chats.length() > 4)
+            sleeper->chats = sleeper->chats.mid(sleeper->chats.length() - 4);
+    }
+
+    // 执行路径
     if(!data.player.path.isEmpty()) {
         bool sendSleep = false;
         int bx = viewXToBedX(data.player.x);
         int by = viewYToBedY(data.player.y);
-        if(doPath(data.player.path, data.player.x, data.player.y, step) && isBed(bx, by)) {
-//            data.player.bedX = bx;
-//            data.player.bedY = by;
-//            data.player.inBed = true;
+        if(doPath(data.player.path, data.player.x, data.player.y, step) && isBed(bx, by))
             sendSleep = true;
-        }
         if(data.player.path.isEmpty())
             emit sPos(data.player.x, data.player.y);
         if(sendSleep)
             emit sSleep(bx, by);
     }
+    // 执行其他玩家路径
     for(Sleeper &sleeper : data.otherSleeper) {
         if(!sleeper.path.isEmpty())
             doPath(sleeper.path, sleeper.x, sleeper.y, step);
     }
+
+    // 调用更新
     update();
     mOverlay->update();
 }
@@ -623,28 +660,47 @@ void SleepRoom::onPaint(QPainter *p) {
 
     QFontMetrics fm(font);
 
-    // 绘制玩家名称
-    p->setBrush(QColor(0, 0, 0, 128));
-    for(const Sleeper *sleeper : data.sortedSleepers) {
-        QSizeF size = fm.boundingRect(sleeper->name).size() + QSizeF(10, 10);
+    // 绘制玩家名称和聊天
+    QRectF winRect = rect();
+    for(const Sleeper *sleeper : qAsConst(data.sortedSleepers)) {
         QPointF pos;
         if(sleeper->inBed) {
             pos = QPointF(
-                        viewXToWinX(bedXToViewX(sleeper->bedX)) - size.width() / 2.0,
-                        viewYToWinY(bedYToViewY(sleeper->bedY) - hBed * 0.4) - size.height()
+                        viewXToWinX(bedXToViewX(sleeper->bedX)),
+                        viewYToWinY(bedYToViewY(sleeper->bedY) - hBed * 0.4)
                         );
         } else {
-            pos = QPointF(viewXToWinX(sleeper->x) - size.width() / 2.0, viewYToWinY(sleeper->y - 115) - size.height());
+            pos = QPointF(viewXToWinX(sleeper->x), viewYToWinY(sleeper->y - 115));
         }
-        QRectF nameRect(pos, size);
-        QRectF winRect = rect();
-        if(!winRect.contains(nameRect) && !winRect.intersects(nameRect))
-            continue;
 
-        p->setPen(Qt::NoPen);
-        p->drawRect(nameRect);
-        p->setPen(Qt::white);
-        p->drawText(nameRect, Qt::AlignCenter, sleeper->name);
+        // 绘制名称
+        QSizeF size = fm.boundingRect(sleeper->name).size() + QSizeF(14, 10);
+        QRectF nameRect(pos - QPointF(size.width() / 2.0, size.height()), size);
+        pos.ry() -= size.height() + 2;
+        if(winRect.contains(nameRect) || winRect.intersects(nameRect)) {
+            p->setPen(Qt::NoPen);
+            p->setBrush(QColor(0, 0, 0, 128));
+            p->drawRect(nameRect);
+            p->setPen(Qt::white);
+            p->drawText(nameRect, Qt::AlignCenter, sleeper->name);
+        }
+
+        // 绘制聊天
+        for(auto iter = sleeper->chats.crbegin(); iter != sleeper->chats.crend(); ++iter) {
+            const Sleeper::Chat &chat = *iter;
+            QSizeF size = fm.boundingRect(chat.str).size() + QSizeF(10, 6);
+            QRectF strRect(pos - QPointF(size.width() / 2.0, size.height()), size);
+            pos.ry() -= size.height() + 2;
+            if(!winRect.contains(strRect) && !winRect.intersects(strRect))
+                continue;
+
+            p->setPen(Qt::black);
+            p->setBrush(QColor(238, 255, 241, 200));
+            p->drawRect(strRect);
+            p->setPen(Qt::black);
+            p->drawText(strRect, Qt::AlignCenter, chat.str);
+        }
+
     }
 
     // 绘制路线

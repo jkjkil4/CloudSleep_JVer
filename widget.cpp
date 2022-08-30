@@ -37,6 +37,7 @@ Widget::Widget(QWidget *parent)
     connect(mSleepRoom, &SleepRoom::sPos, this, &Widget::pos);
     connect(mSleepRoom, &SleepRoom::sMove, this, &Widget::move);
     connect(mSleepRoom, &SleepRoom::sSleep, this, &Widget::sleep);
+    connect(mSleepRoom, &SleepRoom::sChat, this, &Widget::chat);
 }
 
 Widget::~Widget()
@@ -127,6 +128,11 @@ void Widget::onReadyRead() {
                         root.value("bx").toInt(0), root.value("by").toInt(0),
                         root.value("inBed").toBool(false)
                         );
+        } else if(type == "chat") {
+            mSleepRoom->onChat(
+                        root.value("id").toString().toULongLong(),
+                        root.value("str").toString()
+                        );
         } else if(type == "leave") {
             mSleepRoom->onLeave(root.value("id").toString().toULongLong());
         }
@@ -159,6 +165,15 @@ void Widget::sleep(int bx, int by) {
     root.insert("type", "sleep");
     root.insert("bx", bx);
     root.insert("by", by);
+    doc.setObject(root);
+    mSocket->write(doc.toJson(QJsonDocument::Compact));
+    mSocket->write(QByteArray(1, EOF));
+}
+void Widget::chat(const QString &str) {
+    QJsonDocument doc;
+    QJsonObject root;
+    root.insert("type", "chat");
+    root.insert("str", str);
     doc.setObject(root);
     mSocket->write(doc.toJson(QJsonDocument::Compact));
     mSocket->write(QByteArray(1, EOF));

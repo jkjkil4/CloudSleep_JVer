@@ -29,6 +29,7 @@ public slots:
     void pos(double x, double y);
     void move(double x, double y);
     void sleep(int bx, int by);
+    void chat(const QString &str);
 
 protected:
     void closeEvent(QCloseEvent *) override;
