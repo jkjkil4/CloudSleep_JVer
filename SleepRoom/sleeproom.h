@@ -148,7 +148,7 @@ public:
     bool isBed(int bx, int by);
 
 public:
-    void paintTexture(QOpenGLTexture *texture, const QPointF &pos, const QSizeF &scale, double rotation);
+    void paintTexture(QOpenGLTexture *texture, const QPointF &pos, const QPointF &orig, const QSizeF &scale, double rotation);
 
 protected:
     void initializeGL() override;
@@ -172,7 +172,7 @@ private:
 
         Sleeper player;
         QMap<qulonglong, Sleeper> otherSleeper;
-        qulonglong counter;
+        int counter;
 
         QVector<Sleeper*> sortedSleepers;
 
@@ -194,7 +194,9 @@ private:
         GLuint vao;
         GLuint ebo;
         QOpenGLShaderProgram program;
-        GLint locationWindowSize, locationTexPos, locationTexSize, locationRotation;
+        GLint locationWindowSize;
+        GLint locationTexPos, locationTexOrig, locationTexSize;
+        GLint locationTexScale, locationRotation;
     } shader;
 };
 

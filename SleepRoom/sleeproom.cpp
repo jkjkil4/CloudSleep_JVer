@@ -180,7 +180,7 @@ void SleepRoom::pathTo(QList<QPointF> &path, const QPointF &start, QPointF end) 
             // 下
             if(startBY == endBY - 1 && (
                         (isBed(startBX, startBY) && start.y() >= bedDownEdge(startBY))
-                        || collisionBed(endBX, endBY)
+                        || collisionBed(end.x(), end.y())
                         )) {
                 path << end;
             } else {
@@ -309,7 +309,7 @@ void SleepRoom::mouseReleaseEvent(QMouseEvent *ev) {
             emit sPos(data.player.x, data.player.y);
         }
         if(!data.player.inBed) {
-            double viewx = winXToViewX(ev->x()), viewy = winYToViewY(ev->y());
+            double viewx = winXToViewX(ev->x()), viewy = winYToViewY(ev->y()) - 20;
             data.player.path.clear();
             pathTo(data.player.path, QPointF(data.player.x, data.player.y), QPointF(viewx, viewy));
             emit sPos(data.player.x, data.player.y);
@@ -510,10 +510,12 @@ bool SleepRoom::collisionBed(double viewx, double viewy) {
 bool SleepRoom::isBed(int bx, int by) { return floorMod(bx, 2) != floorMod(by, 2); }
 
 
-void SleepRoom::paintTexture(QOpenGLTexture *texture, const QPointF &pos, const QSizeF &scale, double rotation) {
+void SleepRoom::paintTexture(QOpenGLTexture *texture, const QPointF &pos, const QPointF &orig, const QSizeF &scale, double rotation) {
     texture->bind(0);
     glUniform2f(shader.locationTexPos, (float)winXToGLX(pos.x()), (float)winYToGLY(pos.y()));
-    glUniform2f(shader.locationTexSize, (float)(scale.width() * texture->width() / width()), -(float)(scale.height() * texture->height() / height()));
+    glUniform2f(shader.locationTexOrig, (float)orig.x(), -(float)orig.y());
+    glUniform2f(shader.locationTexSize, (float)texture->width(), -(float)texture->height());
+    glUniform2f(shader.locationTexScale, (float)scale.width(), (float)scale.height());
     glUniform1f(shader.locationRotation, (float)rotation);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 }
@@ -568,13 +570,17 @@ void SleepRoom::initializeGL() {
 
     glBindVertexArray(0);
 
-    shader.program.setUniformValue("u_sTexImg", 0);
-    shader.program.setUniformValue("u_vWindowSize", (float)width(), (float)height());
 //    shader.program.setUniformValue("u_vBlendColor", 0.80f, 0.85f, 0.81f, 1.0f);
     shader.locationWindowSize = glGetUniformLocation(shader.program.programId(), "u_vWindowSize");
     shader.locationTexPos = glGetUniformLocation(shader.program.programId(), "u_vTexPos");
+    shader.locationTexOrig = glGetUniformLocation(shader.program.programId(), "u_vTexOrig");
     shader.locationTexSize = glGetUniformLocation(shader.program.programId(), "u_vTexSize");
+    shader.locationTexScale = glGetUniformLocation(shader.program.programId(), "u_vTexScale");
     shader.locationRotation = glGetUniformLocation(shader.program.programId(), "u_fRotation");
+
+    shader.program.bind();
+    shader.program.setUniformValue("u_sTexImg", 0);
+    shader.program.setUniformValue(shader.locationWindowSize, (float)width(), (float)height());
 
     data.asset.textureBedEmpty = new QOpenGLTexture(QImage(":/bed/src/bedEmpty.png"));
     data.asset.sleeperTextures.reserve(data.asset.sleeperImages.length());
@@ -585,6 +591,9 @@ void SleepRoom::initializeGL() {
         {new QOpenGLTexture(QImage(":/role/src/Boy.png")), new QOpenGLTexture(QImage(":/bed/src/bedBoy.png"))},
         {new QOpenGLTexture(QImage(":/role/src/Girl.png")), new QOpenGLTexture(QImage(":/bed/src/bedGirl.png"))}
     };
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     glClearColor(0.70f, 0.75f, 0.71f, 1.0f);
 
@@ -615,7 +624,9 @@ void SleepRoom::paintGL() {
                     }
                 }
                 double x = viewXToWinX(bedXToViewX(i)), y = viewYToWinY(bedYToViewY(j));
-                paintTexture(texture, QPointF(x, y), QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0);
+                paintTexture(
+                    texture, QPointF(x, y), QPointF(), QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0
+                );
             }
         }
     }
@@ -625,10 +636,14 @@ void SleepRoom::paintGL() {
         if(sleeper->inBed)
             continue;
         paintTexture(
-            data.asset.sleeperTextures[sleeper->role].walk, QPointF(viewXToWinX(sleeper->x), viewYToWinY(sleeper->y - 50)),
-            QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0
+            data.asset.sleeperTextures[sleeper->role].walk, QPointF(viewXToWinX(sleeper->x), viewYToWinY(sleeper->y)), QPointF(0, 60),
+            sleeper->path.isEmpty()
+                ? QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor * (qSin(data.counter / 50.0) / 20 + 0.9))
+                : QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor),
+            sleeper->path.isEmpty() ? 0 : 0.2 * qSin(data.counter / 4.0)
         );
     }
+
 }
 
 void SleepRoom::resizeGL(int w, int h) {
@@ -654,7 +669,7 @@ void SleepRoom::onPaint(QPainter *p) {
                         viewYToWinY(bedYToViewY(sleeper->bedY) - hBed * 0.4)
                         );
         } else {
-            pos = QPointF(viewXToWinX(sleeper->x), viewYToWinY(sleeper->y - 115));
+            pos = QPointF(viewXToWinX(sleeper->x), viewYToWinY(sleeper->y - 96));
         }
 
         // 绘制名称
@@ -690,9 +705,9 @@ void SleepRoom::onPaint(QPainter *p) {
     // 绘制路线
     if(!data.player.path.isEmpty()) {
         p->setPen(QPen(QColor(255, 255, 255, 100), 2));
-        QPointF prev(viewXToWinX(data.player.x), viewYToWinY(data.player.y));
+        QPointF prev(viewXToWinX(data.player.x), viewYToWinY(data.player.y + 20));
         for(const QPointF &pos : qAsConst(data.player.path)) {
-            QPointF cur(viewXToWinX(pos.x()), viewYToWinY(pos.y()));
+            QPointF cur(viewXToWinX(pos.x()), viewYToWinY(pos.y() + 20));
             p->drawLine(prev, cur);
             prev = cur;
         }
