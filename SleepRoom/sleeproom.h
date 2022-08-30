@@ -57,7 +57,41 @@ private:
     };
 
 public:
-    QList<QPointF> pathTo(const QPointF &start, QPointF end);
+//    struct GridPos {
+//        int pos;
+//        enum Flag { L = 0, R = 1 } flag;
+//        inline bool operator==(const GridPos &other) const { return pos == other.pos && flag == other.flag; }
+//        inline bool operator!=(const GridPos &other) const { return pos != other.pos || flag != other.flag; }
+//        inline bool operator<(const GridPos &other) const { return pos < other.pos || (pos == other.pos && flag < other.flag); }
+//        inline bool operator>(const GridPos &other) const { return pos > other.pos || (pos == other.pos && flag > other.flag); }
+//        inline void operator++() {
+//            if(flag == R) {
+//                ++pos;
+//                flag = L;
+//            } else flag = R;
+//        }
+//        inline void operator--() {
+//            if(flag == L) {
+//                --pos;
+//                flag = R;
+//            } else flag = L;
+//        }
+//    };
+//    GridPos xToGridPos(double x);
+//    GridPos yToGridPos(double y);
+//    double gridPosToX(GridPos x, bool rightOrLeft);
+//    double gridPosToY(GridPos y, bool downOrUp);
+
+    QPointF bedUL(int bx, int by);
+    QPointF bedUR(int bx, int by);
+    QPointF bedDL(int bx, int by);
+    QPointF bedDR(int bx, int by);
+    double bedRightEdge(int bx);
+    double bedDownEdge(int by);
+
+    void pathTo(QList<QPointF> &path, const QPointF &start, QPointF end);
+    void pathTo(QList<QPointF> &path, int xStart, int yStart, int xEnd, int yEnd);
+//    bool pathTo(QList<QPointF> &path, bool xtrend, bool ytrend, GridPos start, GridPos starty, GridPos endx, GridPos endy, int depth);
     bool doPath(QList<QPointF> &path, double &x, double &y, double step);
 
 protected:
