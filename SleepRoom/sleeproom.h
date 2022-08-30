@@ -62,14 +62,15 @@ protected:
 public:
     void onPos(qulonglong id, double x, double y);
     void onMove(qulonglong id, double x, double y);
-    void onSleep(qulonglong id, int x, int y);
+    void onSleep(qulonglong id, int bx, int by);
+    void onBlocked(int bx, int by);
     void onSleeper(const QString &name, int role, qulonglong id, double x, double y, int bx, int by, bool inBed);
     void onLeave(qulonglong id);
 
 signals:
     void sPos(double x, double y);
     void sMove(double x, double y);
-    void sSleep(int x, int y);
+    void sSleep(int bx, int by);
 
 private:
     QPoint mMousePrev;
@@ -127,6 +128,8 @@ private:
         Sleeper player;
         QMap<qulonglong, Sleeper> otherSleeper;
         qulonglong counter;
+
+        QVector<Sleeper*> sortedSleepers;
 
         struct {
             QOpenGLTexture *textureBedEmpty;

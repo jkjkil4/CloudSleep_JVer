@@ -119,6 +119,8 @@ void Widget::onReadyRead() {
                         root.value("bx").toInt(),
                         root.value("by").toInt()
                         );
+        } else if(type == "blocked") {
+            mSleepRoom->onBlocked(root.value("bx").toInt(), root.value("by").toInt());
         } else if(type == "sleeper") {
             mSleepRoom->onSleeper(
                         root.value("name").toString(), root.value("role").toInt(),
@@ -151,12 +153,12 @@ void Widget::move(double x, double y) {
     mSocket->write(doc.toJson(QJsonDocument::Compact));
     mSocket->write(QByteArray(1, EOF));
 }
-void Widget::sleep(int x, int y) {
+void Widget::sleep(int bx, int by) {
     QJsonDocument doc;
     QJsonObject root;
     root.insert("type", "sleep");
-    root.insert("bx", x);
-    root.insert("by", y);
+    root.insert("bx", bx);
+    root.insert("by", by);
     doc.setObject(root);
     mSocket->write(doc.toJson(QJsonDocument::Compact));
     mSocket->write(QByteArray(1, EOF));

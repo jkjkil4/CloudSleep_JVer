@@ -28,7 +28,7 @@ public slots:
 
     void pos(double x, double y);
     void move(double x, double y);
-    void sleep(int x, int y);
+    void sleep(int bx, int by);
 
 protected:
     void closeEvent(QCloseEvent *) override;

@@ -56,6 +56,9 @@ void SleepRoom::clear() {
     data.player.inBed = 0;
     data.otherSleeper.clear();
     data.counter = 0;
+
+    data.sortedSleepers.clear();
+    data.sortedSleepers << &data.player;
 }
 
 // 这段真的是大粪，不予置评
@@ -353,13 +356,13 @@ void SleepRoom::onMove(qulonglong id, double x, double y) {
         return;
     iter->path = pathTo(QPointF(iter->x, iter->y), QPointF(x, y));
 }
-void SleepRoom::onSleep(qulonglong id, int x, int y) {
+void SleepRoom::onSleep(qulonglong id, int bx, int by) {
     if(id == data.player.id) {
-        data.player.bedX = x;
-        data.player.bedY = y;
+        data.player.bedX = bx;
+        data.player.bedY = by;
         data.player.inBed = true;
 
-        double bedCenterX = bedXToViewX(x), bedCenterY = bedYToViewY(y);
+        double bedCenterX = bedXToViewX(bx), bedCenterY = bedYToViewY(by);
         double wLimit = qMax(1, width() - 80) / data.view.adjustedScaleFactor / 2;
         double hLimit = qMax(1, height() - 80) / data.view.adjustedScaleFactor / 2;
         data.view.xOffset = qBound<double>(-wLimit, data.view.xOffset + data.player.x - bedCenterX, wLimit);
@@ -369,27 +372,45 @@ void SleepRoom::onSleep(qulonglong id, int x, int y) {
     } else {
         auto iter = data.otherSleeper.find(id);
         if(iter != data.otherSleeper.end()) {
-            iter->bedX = x;
-            iter->bedY = y;
+            iter->bedX = bx;
+            iter->bedY = by;
             iter->inBed = true;
         }
+    }
+}
+void SleepRoom::onBlocked(int bx, int by) {
+    int aBX = viewXToBedX(data.player.x), aBY = viewYToBedY(data.player.y);
+    if(aBX == bx && aBY == by && collisionBed(data.player.x, data.player.y)) {
+        data.player.x = bedXToViewX(bx) - wBed / 2.0 - wSpc - 2;
+        emit sPos(data.player.x, data.player.y);
     }
 }
 void SleepRoom::onSleeper(const QString &name, int role, qulonglong id, double x, double y, int bx, int by, bool inBed) {
     auto iter = data.otherSleeper.constFind(id);
     if(iter != data.otherSleeper.cend())
         return;
-    data.otherSleeper[id] = Sleeper{ name, qBound(0, role, data.asset.sleeperImages.length() - 1), id, x, y, bx, by, inBed, {} };
+    Sleeper &sleeper = data.otherSleeper[id] = Sleeper{ name, qBound(0, role, data.asset.sleeperImages.length() - 1), id, x, y, bx, by, inBed, {} };
+    data.sortedSleepers << &sleeper;
 }
 void SleepRoom::onLeave(qulonglong id) {
     auto iter = data.otherSleeper.find(id);
     if(iter == data.otherSleeper.end())
         return;
+    for(auto iter = data.sortedSleepers.begin(); iter != data.sortedSleepers.end(); ++iter) {
+        if((*iter)->id == id) {
+            data.sortedSleepers.erase(iter);
+            break;
+        }
+    }
     data.otherSleeper.erase(iter);
 }
 
 void SleepRoom::onTimerTimeout() {
     data.counter++;
+
+    std::sort(data.sortedSleepers.begin(), data.sortedSleepers.end(), [](Sleeper *a, Sleeper *b) {
+        return a->y < b->y;
+    });
 
     int elapsed = qMax(0, (int)mElapsedTimer.elapsed());
     mElapsedTimer.start();
@@ -557,7 +578,7 @@ void SleepRoom::paintGL() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    if(data.asset.textureBedEmpty) {
+    {   // 绘制床
         int bx1 = viewXToBedX(winXToViewX(0)), bx2 = viewXToBedX(winXToViewX(width()));
         int by1 = viewYToBedY(winYToViewY(0)), by2 = viewYToBedY(winYToViewY(height()));
         for(int i = bx1; i <= bx2; ++i) {
@@ -565,16 +586,11 @@ void SleepRoom::paintGL() {
                 if(!isBed(i, j))
                     continue;
 
-                // 绘制床
                 QOpenGLTexture *texture = data.asset.textureBedEmpty;
-                if(data.player.inBed && data.player.bedX == i && data.player.bedY == j) {
-                    texture = data.asset.sleeperTextures[data.player.role].bed;
-                } else {
-                    for(const Sleeper &sleeper : qAsConst(data.otherSleeper)) {
-                        if(sleeper.inBed && sleeper.bedX == i && sleeper.bedY == j) {
-                            texture = data.asset.sleeperTextures.value(sleeper.role).bed;
-                            break;
-                        }
+                for(const Sleeper *sleeper : qAsConst(data.sortedSleepers)) {
+                    if(sleeper->inBed && sleeper->bedX == i && sleeper->bedY == j) {
+                        texture = data.asset.sleeperTextures.value(sleeper->role).bed;
+                        break;
                     }
                 }
                 double x = viewXToWinX(bedXToViewX(i)), y = viewYToWinY(bedYToViewY(j));
@@ -583,19 +599,12 @@ void SleepRoom::paintGL() {
         }
     }
 
-    if(!data.player.inBed) {
-        // 绘制玩家
-        paintTexture(
-            data.asset.sleeperTextures[data.player.role].walk, QPointF(viewXToWinX(data.player.x), viewYToWinY(data.player.y - 50)),
-            QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0
-        );
-    }
-    // 绘制其他玩家
-    for(const Sleeper &sleeper : qAsConst(data.otherSleeper)) {
-        if(sleeper.inBed)
+    // 绘制玩家
+    for(const Sleeper *sleeper : qAsConst(data.sortedSleepers)) {
+        if(sleeper->inBed)
             continue;
         paintTexture(
-            data.asset.sleeperTextures[sleeper.role].walk, QPointF(viewXToWinX(sleeper.x), viewYToWinY(sleeper.y - 50)),
+            data.asset.sleeperTextures[sleeper->role].walk, QPointF(viewXToWinX(sleeper->x), viewYToWinY(sleeper->y - 50)),
             QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor), 0
         );
     }
@@ -615,22 +624,28 @@ void SleepRoom::onPaint(QPainter *p) {
     QFontMetrics fm(font);
 
     // 绘制玩家名称
-    QSizeF size = fm.boundingRect(data.player.name).size() + QSizeF(10, 10);
-    QPointF pos;
-    if(data.player.inBed) {
-        pos = QPointF(
-                    viewXToWinX(bedXToViewX(data.player.bedX)) - size.width() / 2.0,
-                    viewYToWinY(bedYToViewY(data.player.bedY) - hBed * 0.4) - size.height()
-                    );
-    } else {
-        pos = QPointF(viewXToWinX(data.player.x) - size.width() / 2.0, viewYToWinY(data.player.y - 115) - size.height());
-    }
-    QRectF rect(pos, size);
-    p->setPen(Qt::NoPen);
     p->setBrush(QColor(0, 0, 0, 128));
-    p->drawRect(rect);
-    p->setPen(Qt::white);
-    p->drawText(rect, Qt::AlignCenter, data.player.name);
+    for(const Sleeper *sleeper : data.sortedSleepers) {
+        QSizeF size = fm.boundingRect(sleeper->name).size() + QSizeF(10, 10);
+        QPointF pos;
+        if(sleeper->inBed) {
+            pos = QPointF(
+                        viewXToWinX(bedXToViewX(sleeper->bedX)) - size.width() / 2.0,
+                        viewYToWinY(bedYToViewY(sleeper->bedY) - hBed * 0.4) - size.height()
+                        );
+        } else {
+            pos = QPointF(viewXToWinX(sleeper->x) - size.width() / 2.0, viewYToWinY(sleeper->y - 115) - size.height());
+        }
+        QRectF nameRect(pos, size);
+        QRectF winRect = rect();
+        if(!winRect.contains(nameRect) && !winRect.intersects(nameRect))
+            continue;
+
+        p->setPen(Qt::NoPen);
+        p->drawRect(nameRect);
+        p->setPen(Qt::white);
+        p->drawText(nameRect, Qt::AlignCenter, sleeper->name);
+    }
 
     // 绘制路线
     if(!data.player.path.isEmpty()) {
