@@ -23,8 +23,8 @@ Mainpage::~Mainpage()
 
 Mainpage::Data Mainpage::data() {
     QString str = ui->editServ->text();
-    int ind = str.indexOf(':');
-    return { ui->editName->text().trimmed(), ui->widgetRoles->ind(), QHostAddress(str.left(ind)), (quint16)str.midRef(ind + 1).toInt() };
+    int ind = (int)str.indexOf(':');
+    return { ui->editName->text().trimmed(), ui->widgetRoles->ind(), QHostAddress(str.left(ind)), (quint16)str.mid(ind + 1).toInt() };
 }
 
 void Mainpage::saveConfig() {

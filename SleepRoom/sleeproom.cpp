@@ -411,6 +411,30 @@ bool SleepRoom::touchEndEventProcess(QTouchEvent *ev) {
 }
 #endif
 
+void SleepRoom::onCommand(const QString &command, const QString &content) {
+    if(command == "tp") {
+        bool found = false;
+        for(const Sleeper &sleeper : qAsConst(data.otherSleeper)) {
+            if(sleeper.name == content) {
+                QPointF pos = bedDR(viewXToBedX(sleeper.x), viewYToBedY(sleeper.y));
+                data.player.x = pos.x();
+                data.player.y = pos.y();
+                data.player.inBed = false;
+                data.player.path.clear();
+                data.view.xOffset = 0;
+                data.view.yOffset = 0;
+                emit sPos(data.player.x, data.player.y);
+                found = true;
+                break;
+            }
+        }
+        if(!found)
+            data.player.chats << Sleeper::Chat{ "/指令错误:未知玩家名/", 5000 };
+        return;
+    }
+    data.player.chats << Sleeper::Chat{ "/指令错误:未知指令/", 5000 };
+}
+
 void SleepRoom::onPos(qulonglong id, double x, double y) {
     auto iter = data.otherSleeper.find(id);
     if(iter == data.otherSleeper.end())
@@ -493,6 +517,16 @@ void SleepRoom::onBtnChatClicked() {
     if(str.isEmpty())
         return;
     mOverlay->ui->editChat->clear();
+    // 判断为命令
+    if(str.startsWith('/')) {
+        int index = (int)str.indexOf(' ');
+        if(index == -1) {
+            onCommand(str.mid(1), "");
+        } else {
+            onCommand(str.mid(1, index - 1), str.mid(index + 1).trimmed());
+        }
+        return;
+    }
     emit sChat(str);
 }
 
@@ -724,7 +758,7 @@ void SleepRoom::paintGL() {
             sleeper->path.isEmpty()
                 ? QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor * (qSin(data.counter / 50.0) / 40 + 0.95))
                 : QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor),
-            sleeper->path.isEmpty() ? 0 : 0.14 * qSin(data.counter / 5.0)
+            sleeper->path.isEmpty() ? 0 : 0.18 * qSin(data.counter / 5.5)
         );
     }
 
@@ -782,7 +816,7 @@ void SleepRoom::onPaint(QPainter *p) {
                 continue;
 
             p->setPen(Qt::black);
-            p->setBrush(QColor(238, 255, 241, 200));
+            p->setBrush(chat.str.startsWith('/') ? QColor(255, 228, 231) : QColor(238, 255, 241, 200));
             p->drawRect(strRect);
             p->setPen(Qt::black);
             p->drawText(strRect, Qt::AlignCenter, chat.str);

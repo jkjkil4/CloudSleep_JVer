@@ -93,6 +93,8 @@ private:
 #endif
 
 public:
+    void onCommand(const QString &command, const QString &content);
+
     void onPos(qulonglong id, double x, double y);
     void onMove(qulonglong id, double x, double y);
     void onSleep(qulonglong id, int bx, int by);
