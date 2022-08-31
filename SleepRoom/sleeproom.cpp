@@ -432,6 +432,15 @@ void SleepRoom::onCommand(const QString &command, const QString &content) {
             data.player.chats << Sleeper::Chat{ "/指令错误:未知玩家名/", 5000 };
         return;
     }
+    if(command == "animScaleFromFar") {
+        QPropertyAnimation *anim = new QPropertyAnimation(this, "scaleFactor");
+        int duration = content.toInt();
+        anim->setDuration(duration <= 0 ? 2000 : qBound(0, duration, 1000 * 60));
+        anim->setStartValue(-4.0);
+        anim->setEndValue(1.2);
+        anim->start(QPropertyAnimation::DeleteWhenStopped);
+        return;
+    }
     data.player.chats << Sleeper::Chat{ "/指令错误:未知指令/", 5000 };
 }
 

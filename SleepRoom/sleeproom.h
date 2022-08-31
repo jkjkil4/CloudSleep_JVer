@@ -12,6 +12,8 @@
 #include <QWheelEvent>
 #include <QElapsedTimer>
 
+#include <QPropertyAnimation>
+
 #ifdef Q_OS_ANDROID
 # include <QTouchEvent>
 #endif
@@ -152,7 +154,7 @@ protected:
 public slots:
     void onPaint(QPainter *p);
 
-private:
+private:    
     static constexpr int wSpc = 40;
     static constexpr int hSpc = 40;
     static constexpr int wBed = 151;
@@ -190,6 +192,13 @@ private:
         GLint locationTexPos, locationTexOrig, locationTexSize;
         GLint locationTexScale, locationRotation;
     } shader;
+
+    Q_PROPERTY(double scaleFactor READ scaleFactor WRITE setScaleFactor)
+    double scaleFactor() { return data.view.scaleFactor; }
+    void setScaleFactor(double factor) {
+        data.view.scaleFactor = factor;
+        data.view.adjustedScaleFactor = qPow(2, factor);
+    }
 };
 
 #endif // SLEEPROOM_H
