@@ -66,6 +66,8 @@ void SleepRoom::clear() {
     data.player.bedX = 0;
     data.player.bedY = 0;
     data.player.inBed = 0;
+    data.player.path.clear();
+    data.player.chats.clear();
     data.otherSleeper.clear();
     data.counter = 0;
 
@@ -225,7 +227,7 @@ void SleepRoom::pathTo(QList<QPointF> &path, const QPointF &start, QPointF end) 
             }
         } else {
             // 中
-            if(isBed(startBX, startBY)) {
+            if(isBed(startBX, startBY) && !collisionBed(end.x(), end.y())) {
                 bool flag1 = start.x() < bedRightEdge(startBX) && end.y() < bedDownEdge(startBY);
                 bool flag2 = start.y() < bedDownEdge(startBY) && end.x() < bedRightEdge(startBX);
                 if(flag1 || flag2)
@@ -331,7 +333,7 @@ void SleepRoom::mouseReleaseEvent(QMouseEvent *ev) {
             emit sPos(data.player.x, data.player.y);
         }
         if(!data.player.inBed) {
-            double viewx = winXToViewX(ev->x()), viewy = winYToViewY(ev->y()) - 20;
+            double viewx = winXToViewX(ev->x()), viewy = winYToViewY(ev->y());
             data.player.path.clear();
             pathTo(data.player.path, QPointF(data.player.x, data.player.y), QPointF(viewx, viewy));
             emit sPos(data.player.x, data.player.y);
@@ -720,9 +722,9 @@ void SleepRoom::paintGL() {
         paintTexture(
             data.asset.sleeperTextures[sleeper->role].walk, QPointF(viewXToWinX(sleeper->x), viewYToWinY(sleeper->y)), QPointF(0, 60),
             sleeper->path.isEmpty()
-                ? QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor * (qSin(data.counter / 50.0) / 20 + 0.9))
+                ? QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor * (qSin(data.counter / 50.0) / 40 + 0.95))
                 : QSizeF(data.view.adjustedScaleFactor, data.view.adjustedScaleFactor),
-            sleeper->path.isEmpty() ? 0 : 0.2 * qSin(data.counter / 4.0)
+            sleeper->path.isEmpty() ? 0 : 0.14 * qSin(data.counter / 5.0)
         );
     }
 
