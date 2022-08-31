@@ -88,7 +88,7 @@ private:
     bool touchUpdateEventProcess(QTouchEvent *ev);
     bool touchEndEventProcess(QTouchEvent *ev);
 
-    bool mTouchHolding[2];
+    bool mTouchHolding[2] { false, false };
     QPointF mTouchPos[2];
     double mTouchDis = 0;
     bool mBlockRelease = false;
