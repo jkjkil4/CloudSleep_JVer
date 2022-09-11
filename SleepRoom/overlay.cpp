@@ -7,6 +7,10 @@ Overlay::Overlay(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    QPalette pal = ui->editChat->palette();
+    pal.setBrush(QPalette::PlaceholderText, Qt::gray);
+    ui->editChat->setPalette(pal);
+
     connect(ui->btnAssist, &QPushButton::clicked, this, &Overlay::onBtnAssistClicked);
 }
 

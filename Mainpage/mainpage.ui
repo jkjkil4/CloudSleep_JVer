@@ -255,6 +255,9 @@
          <property name="styleSheet">
           <string notr="true">border: 1px solid black;</string>
          </property>
+         <property name="placeholderText">
+          <string>请联系服务端管理者获取</string>
+         </property>
         </widget>
        </item>
        <item row="0" column="1">

@@ -9,7 +9,7 @@ CONFIG += c++17
 
 RC_ICONS += CloudSleep_JVer.ico
 RC_LANG = 0x0004
-VERSION = 0.1.0
+VERSION = 0.1.1
 QMAKE_TARGET_DESCRIPTION = "CloudSleep_JVer"
 QMAKE_TARGET_COPYRIGHT = "jkjkil4"
 

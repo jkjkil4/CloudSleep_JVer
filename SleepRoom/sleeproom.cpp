@@ -501,11 +501,17 @@ void SleepRoom::onSleeper(const QString &name, int role, qulonglong id, double x
 void SleepRoom::onChat(qulonglong id, const QString &str) {
     if(id == data.player.id) {
         data.player.chats << Sleeper::Chat{ str, 5000 };
+        data.chatStack.insert(0, "[" + data.player.name + "] " + str);
     } else {
         auto iter = data.otherSleeper.find(id);
         if(iter == data.otherSleeper.end())
             return;
         iter->chats << Sleeper::Chat{ str, 5000 };
+        if(qSqrt(sqr(iter->x - data.player.x) + sqr(iter->y - data.player.y)) < 4096)
+            data.chatStack.insert(0, "[" + iter->name + "] " + str);
+    }
+    if(data.chatStack.length() > 14) {
+        data.chatStack = data.chatStack.mid(0, 14);
     }
 }
 void SleepRoom::onLeave(qulonglong id) {
@@ -548,7 +554,7 @@ void SleepRoom::onTimerTimeout() {
     double step = (double)elapsed / 4.5;
 
     // 将 data.sortedSleepers 按y从小到大排序
-    std::sort(data.sortedSleepers.begin(), data.sortedSleepers.end(), [](Sleeper *a, Sleeper *b) {
+    std::stable_sort(data.sortedSleepers.begin(), data.sortedSleepers.end(), [](Sleeper *a, Sleeper *b) {
         return a->y < b->y;
     });
 
@@ -784,6 +790,9 @@ void SleepRoom::onPaint(QPainter *p) {
 
     // 绘制玩家名称和聊天
     QRectF winRect = rect();
+    font.setPointSize(10);
+    QFontMetrics fm(font);
+    p->setFont(font);
     for(const Sleeper *sleeper : qAsConst(data.sortedSleepers)) {
         QPointF pos;
         if(sleeper->inBed) {
@@ -796,10 +805,6 @@ void SleepRoom::onPaint(QPainter *p) {
         }
 
         // 绘制名称
-        font.setPointSize(12);
-        QFontMetrics fm(font);
-        p->setFont(font);
-
         QSizeF size = fm.boundingRect(sleeper->name).size() + QSizeF(14, 10);
         QRectF nameRect(pos - QPointF(size.width() / 2.0, size.height()), size);
         pos.ry() -= size.height() + 2;
@@ -812,10 +817,6 @@ void SleepRoom::onPaint(QPainter *p) {
         }
 
         // 绘制聊天
-        font.setPointSize(13);
-        fm = QFontMetrics(font);
-        p->setFont(font);
-
         for(auto iter = sleeper->chats.crbegin(); iter != sleeper->chats.crend(); ++iter) {
             const Sleeper::Chat &chat = *iter;
             QSizeF size = fm.boundingRect(chat.str).size() + QSizeF(10, 6);
@@ -830,7 +831,6 @@ void SleepRoom::onPaint(QPainter *p) {
             p->setPen(Qt::black);
             p->drawText(strRect, Qt::AlignCenter, chat.str);
         }
-
     }
 
     // 绘制路线
@@ -841,6 +841,25 @@ void SleepRoom::onPaint(QPainter *p) {
             QPointF cur(viewXToWinX(pos.x()), viewYToWinY(pos.y() + 20));
             p->drawLine(prev, cur);
             prev = cur;
+        }
+    }
+
+    // 绘制聊天信息
+    if(mOverlay->ui->btnHistory->isChecked()) {
+        QPoint dl = mOverlay->ui->editChat->geometry().topLeft();
+        dl.ry() -= 4;
+        p->setBrush(QColor(0, 0, 0, 128));
+        QSize size(
+            mOverlay->ui->editChat->width(),
+            fm.height() + 4);
+        for(const QString &str : qAsConst(data.chatStack)) {
+            dl.ry() -= size.height();
+            QRect rect(dl, size);
+
+            p->setPen(Qt::NoPen);
+            p->drawRect(rect);
+            p->setPen(Qt::white);
+            p->drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, str);
         }
     }
 }

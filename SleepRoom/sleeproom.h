@@ -174,6 +174,8 @@ private:
 
         QVector<Sleeper*> sortedSleepers;
 
+        QStringList chatStack;
+
         struct {
             QOpenGLTexture *textureBedEmpty;
             QVector<SleeperImage> sleeperImages;
