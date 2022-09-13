@@ -29,10 +29,10 @@ SleepRoom::SleepRoom(QWidget *parent)
 
 SleepRoom::~SleepRoom() {
     if(data.glInitialized) {
-        data.asset.textureBedEmpty->release();
+        data.asset.textureBedEmpty->destroy();
         for(auto &st : data.asset.sleeperTextures) {
-            st.bed->release();
-            st.walk->release();
+            st.bed->destroy();
+            st.walk->destroy();
         }
     }
 }
